@@ -94,52 +94,127 @@ export function hitBlink(el: Element | null, color = theme.danger): void {
 }
 
 // ---- 画面切り替え（アスキーのワイプ） ----
+// 文字の面は Canvas に一度だけ描いて使い回す。動きは transform だけ（GPU で動くので滑らか）。
+// 毎フレーム描き直すのは、動いている先頭の帯（数列ぶん）の文字だけ。
 
-let curtain: HTMLElement | null = null;
 const WIPE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-*/%^=~!()[]{}<>|&?:;@#$`'\",._░▒▓█";
+const CELL_W = 9;
+const CELL_H = 17;
+const FONT = "15px 'JetBrains Mono ABC', monospace";
+let field: { cv: HTMLCanvasElement; w: number; h: number; dpr: number } | null = null;
+let curtain: HTMLElement | null = null;
 
-function fill(pre: HTMLElement): void {
-  const cols = Math.ceil(window.innerWidth / 9) + 2;
-  const rows = Math.ceil(window.innerHeight / 17) + 2;
-  const palette = [theme.attr.Diagonal[0], theme.attr.Mixed[0], theme.attr.Curved[0], theme.attr.Orthogonal[0], theme.faint, theme.faint, theme.faint];
-  let html = "";
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      const c = WIPE_CHARS[Math.floor(Math.random() * WIPE_CHARS.length)];
-      const col = palette[Math.floor(Math.random() * palette.length)];
-      html += `<span style="color:${col}">${c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "&" ? "&amp;" : c}</span>`;
-    }
-    html += "\n";
-  }
-  pre.innerHTML = html;
+const randChar = () => WIPE_CHARS[Math.floor(Math.random() * WIPE_CHARS.length)];
+
+function palette(bright: boolean): string {
+  const vivid = [theme.attr.Diagonal[0], theme.attr.Mixed[0], theme.attr.Curved[0], theme.attr.Orthogonal[0]];
+  if (bright) return Math.random() < 0.7 ? vivid[Math.floor(Math.random() * vivid.length)] : theme.fg;
+  return Math.random() < 0.18 ? vivid[Math.floor(Math.random() * vivid.length)] : theme.faint;
 }
 
-/** 画面を文字で覆う（次の画面を作る前に呼ぶ） */
-export async function cover(): Promise<void> {
-  if (curtain) return;
-  curtain = document.createElement("div");
-  curtain.className = "fx-curtain";
-  const pre = document.createElement("pre");
-  curtain.appendChild(pre);
-  document.body.appendChild(curtain);
-  fill(pre);
-  const timer = setInterval(() => fill(pre), 60);
-  const ms = FX.wipe.ms / sp();
-  const a = curtain.animate([{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)" }], { duration: ms, easing: "cubic-bezier(.7,0,.3,1)", fill: "forwards" });
-  await a.finished.catch(() => {});
-  await wait(FX.wipe.hold / sp());
+/** 画面いっぱいの文字の面（ウィンドウの大きさが変わったときだけ描き直す） */
+function getField(): HTMLCanvasElement {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (field && field.w === w && field.h === h && field.dpr === dpr) return field.cv;
+  const cv = document.createElement("canvas");
+  cv.width = Math.ceil(w * dpr);
+  cv.height = Math.ceil(h * dpr);
+  const g = cv.getContext("2d")!;
+  g.scale(dpr, dpr);
+  g.fillStyle = theme.bg;
+  g.fillRect(0, 0, w, h);
+  g.font = FONT;
+  g.textBaseline = "top";
+  for (let y = 0; y < h; y += CELL_H)
+    for (let x = 0; x < w; x += CELL_W) {
+      g.fillStyle = palette(false);
+      g.fillText(randChar(), x, y);
+    }
+  field = { cv, w, h, dpr };
+  return cv;
+}
+
+/** 先頭の帯の文字を描き直す（明るい色でパラパラさせる）。side は帯が面のどちら側か */
+function scrambleEdge(edge: HTMLCanvasElement, side: "left" | "right"): void {
+  const g = edge.getContext("2d")!;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = edge.width / dpr;
+  const h = edge.height / dpr;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  g.font = FONT;
+  g.textBaseline = "top";
+  const cols = Math.floor(w / CELL_W);
+  for (let y = 0; y < h; y += CELL_H)
+    for (let c = 0; c < cols; c++) {
+      // 先頭ほど文字が多く明るい
+      const k = side === "right" ? c / cols : 1 - c / cols;
+      if (Math.random() > 0.25 + k * 0.7) continue;
+      g.globalAlpha = 0.35 + k * 0.65;
+      g.fillStyle = palette(true);
+      g.fillText(randChar(), c * CELL_W, y);
+    }
+  g.globalAlpha = 1;
+}
+
+function buildCurtain(side: "left" | "right"): { el: HTMLElement; edge: HTMLCanvasElement } {
+  const el = document.createElement("div");
+  el.className = `fx-curtain edge-${side}`;
+  el.appendChild(getField());
+  const edge = document.createElement("canvas");
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const bandW = CELL_W * 14;
+  edge.className = "fx-edge";
+  edge.width = Math.ceil(bandW * dpr);
+  edge.height = Math.ceil(window.innerHeight * dpr);
+  edge.style.width = `${bandW}px`;
+  edge.style.height = `${window.innerHeight}px`;
+  el.appendChild(edge);
+  const glow = document.createElement("div");
+  glow.className = "fx-glow";
+  el.appendChild(glow);
+  document.body.appendChild(el);
+  return { el, edge };
+}
+
+async function slide(el: HTMLElement, edge: HTMLCanvasElement, side: "left" | "right", from: string, to: string): Promise<void> {
+  scrambleEdge(edge, side);
+  const timer = setInterval(() => scrambleEdge(edge, side), 45);
+  const anim = el.animate([{ transform: from }, { transform: to }], {
+    duration: FX.wipe.ms / sp(),
+    easing: "cubic-bezier(.7,0,.3,1)",
+    fill: "forwards",
+  });
+  await anim.finished.catch(() => {});
   clearInterval(timer);
 }
 
-/** 覆いを外す */
+/** 画面を文字で覆う（次の画面を作る前に呼ぶ）。左から右へ流れ込む */
+export async function cover(): Promise<void> {
+  if (curtain) return;
+  const { el, edge } = buildCurtain("right");
+  curtain = el;
+  await slide(el, edge, "right", "translateX(-100%)", "translateX(0)");
+  edge.remove();
+  await wait(FX.wipe.hold / sp());
+}
+
+/** 覆いを外す（右へ抜けていく） */
 export async function uncover(): Promise<void> {
   const c = curtain;
   if (!c) return;
   curtain = null;
-  const pre = c.querySelector("pre") as HTMLElement;
-  const timer = setInterval(() => fill(pre), 60);
-  const a = c.animate([{ clipPath: "inset(0 0 0 0%)" }, { clipPath: "inset(0 0 0 100%)" }], { duration: FX.wipe.ms / sp(), easing: "cubic-bezier(.7,0,.3,1)", fill: "forwards" });
-  await a.finished.catch(() => {});
-  clearInterval(timer);
   c.remove();
+  const { el, edge } = buildCurtain("left");
+  await slide(el, edge, "left", "translateX(0)", "translateX(100%)");
+  el.remove();
+}
+
+/** 最初の切り替えで固まらないよう、文字の面を先に描いておく */
+export function prepareWipe(): void {
+  const idle = (window as unknown as { requestIdleCallback?: (f: () => void) => void }).requestIdleCallback;
+  if (idle) idle(() => getField());
+  else setTimeout(() => getField(), 200);
 }

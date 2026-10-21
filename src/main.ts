@@ -8,7 +8,7 @@ import { showTitle } from "./ui/screens/title.ts";
 import { showCollection } from "./ui/screens/collection.ts";
 import { initAudio } from "./ui/audio.ts";
 import { setBackDesign } from "./ui/ascii.ts";
-import { uncover } from "./ui/fx.ts";
+import { prepareWipe, uncover } from "./ui/fx.ts";
 import { prefs } from "./ui/prefs.ts";
 
 const W = 1600;
@@ -44,6 +44,7 @@ async function main(): Promise<void> {
   }
   initFlip();
   initAudio();
+  prepareWipe();
   setBackDesign(prefs.cardBack);
   const params = new URLSearchParams(location.search);
   for (;;) {
