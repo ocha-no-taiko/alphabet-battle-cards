@@ -337,15 +337,9 @@ button, input, select { font-family: var(--mono); font-feature-settings: "liga" 
   position: fixed; pointer-events: none; z-index: 57; font-family: var(--mono); font-weight: 700;
   text-shadow: 0 0 8px currentColor; will-change: transform, opacity;
 }
-.fx-curtain { position: fixed; inset: 0; z-index: 90; background: var(--bg); pointer-events: all; will-change: transform; }
-.fx-curtain > canvas:first-child { position: absolute; inset: 0; width: 100%; height: 100%; }
-.fx-curtain .fx-edge { position: absolute; top: 0; }
-.fx-curtain.edge-right .fx-edge { right: 0; }
-.fx-curtain.edge-left .fx-edge { left: 0; }
-/* 先頭の光る縁 */
-.fx-curtain .fx-glow { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--accent); box-shadow: 0 0 18px 4px var(--accent), 0 0 60px 10px rgba(0, 240, 200, 0.35); }
-.fx-curtain.edge-right .fx-glow { right: -2px; }
-.fx-curtain.edge-left .fx-glow { left: -2px; }
+.fx-curtain { position: fixed; inset: 0; z-index: 90; overflow: hidden; background: var(--bg); pointer-events: all; will-change: transform; }
+.fx-curtain .fx-inner { position: absolute; inset: 0; will-change: transform; }
+.fx-curtain canvas { position: absolute; left: 0; top: 0; will-change: transform; }
 .popup.dmg.big { text-shadow: 0 0 18px var(--danger), 0 0 4px #fff, 3px 3px 0 #000; }
 .popup.guard { color: var(--heal); }
 

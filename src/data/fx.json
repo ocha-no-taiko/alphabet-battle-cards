@@ -14,5 +14,5 @@
   "gameOver": { "flash": 1, "flashMs": 1100, "shake": 22 },
   "lunge": { "px": 46, "ms": 420 },
   "hitStopMs": 90,
-  "wipe": { "ms": 380, "hold": 80 }
+  "wipe": { "ms": 380, "hold": 80, "flickerMs": 60 }
 }

@@ -94,127 +94,115 @@ export function hitBlink(el: Element | null, color = theme.danger): void {
 }
 
 // ---- 画面切り替え（アスキーのワイプ） ----
-// 文字の面は Canvas に一度だけ描いて使い回す。動きは transform だけ（GPU で動くので滑らか）。
-// 毎フレーム描き直すのは、動いている先頭の帯（数列ぶん）の文字だけ。
+// 見た目: 画面いっぱいの文字がチラチラ変わり続け、文字はその場のまま境目だけが横に動く。
+// 軽くするしくみ:
+// ・文字の面は Canvas に 2 枚だけ描いて使い回す（起動直後の空き時間に描く）。チラチラは、見せる面とずらす量を
+//   毎回ランダムに変えて作る（描き直さないので、1 回の切り替えは数十マイクロ秒）
+// ・境目の動きは「外枠を右へ、中身を左へ同じだけ」動かす。どちらも transform なので GPU だけで動く
 
 const WIPE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-*/%^=~!()[]{}<>|&?:;@#$`'\",._░▒▓█";
 const CELL_W = 9;
 const CELL_H = 17;
+const PAD = 8; // ずらせる量（セル数）。面はこのぶん画面より大きく描く
 const FONT = "15px 'JetBrains Mono ABC', monospace";
-let field: { cv: HTMLCanvasElement; w: number; h: number; dpr: number } | null = null;
-let curtain: HTMLElement | null = null;
+const FIELD_COUNT = 2;
+let fields: { cv: HTMLCanvasElement; key: string }[] = [];
+let curtain: { el: HTMLElement; inner: HTMLElement } | null = null;
 
-const randChar = () => WIPE_CHARS[Math.floor(Math.random() * WIPE_CHARS.length)];
+const dprNow = () => Math.min(2, window.devicePixelRatio || 1);
+const sizeKey = () => `${window.innerWidth}x${window.innerHeight}@${dprNow()}`;
 
-function palette(bright: boolean): string {
-  const vivid = [theme.attr.Diagonal[0], theme.attr.Mixed[0], theme.attr.Curved[0], theme.attr.Orthogonal[0]];
-  if (bright) return Math.random() < 0.7 ? vivid[Math.floor(Math.random() * vivid.length)] : theme.fg;
-  return Math.random() < 0.18 ? vivid[Math.floor(Math.random() * vivid.length)] : theme.faint;
-}
-
-/** 画面いっぱいの文字の面（ウィンドウの大きさが変わったときだけ描き直す） */
-function getField(): HTMLCanvasElement {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  if (field && field.w === w && field.h === h && field.dpr === dpr) return field.cv;
+function drawField(): HTMLCanvasElement {
+  const w = window.innerWidth + PAD * CELL_W;
+  const h = window.innerHeight + PAD * CELL_H;
+  const dpr = dprNow();
   const cv = document.createElement("canvas");
   cv.width = Math.ceil(w * dpr);
   cv.height = Math.ceil(h * dpr);
+  cv.style.width = `${w}px`;
+  cv.style.height = `${h}px`;
   const g = cv.getContext("2d")!;
   g.scale(dpr, dpr);
   g.fillStyle = theme.bg;
   g.fillRect(0, 0, w, h);
   g.font = FONT;
   g.textBaseline = "top";
+  const pal = [theme.attr.Diagonal[0], theme.attr.Mixed[0], theme.attr.Curved[0], theme.attr.Orthogonal[0], theme.faint, theme.faint, theme.faint];
   for (let y = 0; y < h; y += CELL_H)
     for (let x = 0; x < w; x += CELL_W) {
-      g.fillStyle = palette(false);
-      g.fillText(randChar(), x, y);
+      g.fillStyle = pal[Math.floor(Math.random() * pal.length)];
+      g.fillText(WIPE_CHARS[Math.floor(Math.random() * WIPE_CHARS.length)], x, y);
     }
-  field = { cv, w, h, dpr };
   return cv;
 }
 
-/** 先頭の帯の文字を描き直す（明るい色でパラパラさせる）。side は帯が面のどちら側か */
-function scrambleEdge(edge: HTMLCanvasElement, side: "left" | "right"): void {
-  const g = edge.getContext("2d")!;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const w = edge.width / dpr;
-  const h = edge.height / dpr;
-  g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.clearRect(0, 0, w, h);
-  g.font = FONT;
-  g.textBaseline = "top";
-  const cols = Math.floor(w / CELL_W);
-  for (let y = 0; y < h; y += CELL_H)
-    for (let c = 0; c < cols; c++) {
-      // 先頭ほど文字が多く明るい
-      const k = side === "right" ? c / cols : 1 - c / cols;
-      if (Math.random() > 0.25 + k * 0.7) continue;
-      g.globalAlpha = 0.35 + k * 0.65;
-      g.fillStyle = palette(true);
-      g.fillText(randChar(), c * CELL_W, y);
-    }
-  g.globalAlpha = 1;
+/** 文字の面をそろえる（大きさが変わっていたら描き直す）。足りないぶんだけ描く */
+function ensureFields(count = FIELD_COUNT): HTMLCanvasElement[] {
+  const key = sizeKey();
+  fields = fields.filter((f) => f.key === key);
+  while (fields.length < count) fields.push({ cv: drawField(), key });
+  return fields.map((f) => f.cv);
 }
 
-function buildCurtain(side: "left" | "right"): { el: HTMLElement; edge: HTMLCanvasElement } {
-  const el = document.createElement("div");
-  el.className = `fx-curtain edge-${side}`;
-  el.appendChild(getField());
-  const edge = document.createElement("canvas");
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const bandW = CELL_W * 14;
-  edge.className = "fx-edge";
-  edge.width = Math.ceil(bandW * dpr);
-  edge.height = Math.ceil(window.innerHeight * dpr);
-  edge.style.width = `${bandW}px`;
-  edge.style.height = `${window.innerHeight}px`;
-  el.appendChild(edge);
-  const glow = document.createElement("div");
-  glow.className = "fx-glow";
-  el.appendChild(glow);
-  document.body.appendChild(el);
-  return { el, edge };
+function startFlicker(inner: HTMLElement): () => void {
+  const cvs = [...inner.querySelectorAll("canvas")];
+  const tick = () => {
+    const pick = Math.floor(Math.random() * cvs.length);
+    const ox = Math.floor(Math.random() * PAD) * CELL_W;
+    const oy = Math.floor(Math.random() * PAD) * CELL_H;
+    cvs.forEach((c, i) => {
+      c.style.visibility = i === pick ? "visible" : "hidden";
+      if (i === pick) c.style.transform = `translate(${-ox}px, ${-oy}px)`;
+    });
+  };
+  tick();
+  const timer = setInterval(tick, FX.wipe.flickerMs);
+  return () => clearInterval(timer);
 }
 
-async function slide(el: HTMLElement, edge: HTMLCanvasElement, side: "left" | "right", from: string, to: string): Promise<void> {
-  scrambleEdge(edge, side);
-  const timer = setInterval(() => scrambleEdge(edge, side), 45);
-  const anim = el.animate([{ transform: from }, { transform: to }], {
-    duration: FX.wipe.ms / sp(),
-    easing: "cubic-bezier(.7,0,.3,1)",
-    fill: "forwards",
-  });
-  await anim.finished.catch(() => {});
-  clearInterval(timer);
+/** 外枠と中身を逆向きに動かして、境目だけが動いて見えるようにする */
+async function sweep(c: { el: HTMLElement; inner: HTMLElement }, from: number, to: number): Promise<void> {
+  const opts: KeyframeAnimationOptions = { duration: FX.wipe.ms / sp(), easing: "cubic-bezier(.7,0,.3,1)", fill: "forwards" };
+  const a = c.el.animate([{ transform: `translateX(${from}%)` }, { transform: `translateX(${to}%)` }], opts);
+  c.inner.animate([{ transform: `translateX(${-from}%)` }, { transform: `translateX(${-to}%)` }], opts);
+  await a.finished.catch(() => {});
 }
 
-/** 画面を文字で覆う（次の画面を作る前に呼ぶ）。左から右へ流れ込む */
+/** 画面を文字で覆う（次の画面を作る前に呼ぶ）。左から右へ覆っていく */
 export async function cover(): Promise<void> {
   if (curtain) return;
-  const { el, edge } = buildCurtain("right");
-  curtain = el;
-  await slide(el, edge, "right", "translateX(-100%)", "translateX(0)");
-  edge.remove();
+  const el = document.createElement("div");
+  el.className = "fx-curtain";
+  const inner = document.createElement("div");
+  inner.className = "fx-inner";
+  for (const cv of ensureFields(1)) inner.appendChild(cv);
+  el.appendChild(inner);
+  document.body.appendChild(el);
+  curtain = { el, inner };
+  const stop = startFlicker(inner);
+  await sweep(curtain, -100, 0);
   await wait(FX.wipe.hold / sp());
+  stop();
 }
 
-/** 覆いを外す（右へ抜けていく） */
+/** 覆いを外す（左から右へ抜けていく） */
 export async function uncover(): Promise<void> {
   const c = curtain;
   if (!c) return;
   curtain = null;
-  c.remove();
-  const { el, edge } = buildCurtain("left");
-  await slide(el, edge, "left", "translateX(0)", "translateX(100%)");
-  el.remove();
+  // 2 枚目が描けていれば足す（チラチラの種類が増える）
+  for (const cv of fields.map((f) => f.cv)) if (!cv.parentElement) c.inner.appendChild(cv);
+  const stop = startFlicker(c.inner);
+  await sweep(c, 0, 100);
+  stop();
+  c.el.remove();
 }
 
-/** 最初の切り替えで固まらないよう、文字の面を先に描いておく */
+/** 最初の切り替えで固まらないよう、文字の面を空いている時間に 1 枚ずつ描いておく */
 export function prepareWipe(): void {
-  const idle = (window as unknown as { requestIdleCallback?: (f: () => void) => void }).requestIdleCallback;
-  if (idle) idle(() => getField());
-  else setTimeout(() => getField(), 200);
+  const idle = (window as unknown as { requestIdleCallback?: (f: () => void) => void }).requestIdleCallback ?? ((f: () => void) => setTimeout(f, 200));
+  const step = () => {
+    if (ensureFields(Math.min(FIELD_COUNT, fields.length + 1)).length < FIELD_COUNT) idle(step);
+  };
+  idle(step);
 }
