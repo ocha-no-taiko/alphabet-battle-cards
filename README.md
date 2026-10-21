@@ -30,6 +30,7 @@ npm run dev          # http://localhost:5210
 npm test             # ルールエンジンの受け入れテスト（node --test）
 npm run sim -- --games 200            # CPU 同士の対戦を回して勝率を集計
 npm run sim -- --games 200 --no-first-auto   # 先攻 1 ターン目の自動ダメージなし
+npm run tier -- --games 2000 --out tier.json   # カードごとの強さ（そのカードを入れたデックの勝率・使用回数）を集計
 npm run build        # 型チェック + dist/ へ出力（相対パスなので静的ホスティングにそのまま置ける）
 ```
 

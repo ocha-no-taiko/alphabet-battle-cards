@@ -13,7 +13,8 @@
     "test": "node --test \"src/**/*.test.ts\"",
     "sim": "node src/sim/cli.ts",
     "font:jp": "uv run --no-project --with fonttools==4.59.0 --with brotli==1.1.0 python scripts/subset-jp-font.py",
-    "font:kaiso": "node scripts/fetch-kaiso.mjs"
+    "font:kaiso": "node scripts/fetch-kaiso.mjs",
+    "tier": "node src/sim/tier.ts"
   },
   "dependencies": {
     "three": "0.186.1"
