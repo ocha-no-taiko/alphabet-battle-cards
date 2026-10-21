@@ -19,7 +19,15 @@
         font-weight: 700;
         font-display: block;
       }
-      /* 日本語は UDEV Gothic 35（英数字が JetBrains Mono のフォント）。使う文字だけに絞ってある（npm run font:jp） */
+      /* 日本語は 廻想体 ネクストUP（もじワク研究）。リポジトリには入れず npm run font:kaiso で公式の Web フォントを取ってくる。
+         ウェイトは B だけなので、太字でも同じファイルを使う（合成の太字にしない） */
+      @font-face {
+        font-family: "Kaisotai ABC";
+        src: url("fonts/Kaisotai-Next-UP-B.woff2") format("woff2");
+        font-weight: 100 900;
+        font-display: block;
+      }
+      /* 廻想体が無いときの代わりは UDEV Gothic 35（英数字が JetBrains Mono のフォント）。使う文字だけに絞ってある（npm run font:jp） */
       @font-face {
         font-family: "UDEV Gothic ABC";
         src: url("fonts/UDEVGothic35-JP-Regular.woff2") format("woff2");

@@ -12,6 +12,7 @@ import { playBgm, playSe, setSound, soundOn } from "../audio.ts";
 import { cover } from "../fx.ts";
 import { trophyCount } from "../trophies.ts";
 import { rulesOverlay } from "./rules.ts";
+import { attachTitleToys } from "./titleToys.ts";
 
 const T = text.title;
 
@@ -79,7 +80,7 @@ export function showTitle(stage: HTMLElement): Promise<TitleChoice> {
   const lastA = deckOptions().some((d) => d.id === prefs.lastDeck) ? prefs.lastDeck : "preset:starter";
   const lastB = deckOptions().some((d) => d.id === prefs.lastDeck2) ? prefs.lastDeck2 : "preset:diagonal";
   root.innerHTML = `
-    <pre class="logo-art">${artToHtml(logo)}</pre>
+    <div class="logo-wrap"><pre class="logo-art" title="click!">${artToHtml(logo)}</pre></div>
     <p class="tagline">${T.tagline}</p>
     <div class="menu" data-view="main">
       <button class="btn menu-item" data-go="cpu">${T.vsCpu}</button>
@@ -119,12 +120,14 @@ export function showTitle(stage: HTMLElement): Promise<TitleChoice> {
     e.preventDefault();
   };
   window.addEventListener("keydown", onKey);
+  const disposeToys = attachTitleToys(root);
   return new Promise((resolve) => {
     let leaving = false;
     const done = async (c: TitleChoice) => {
       if (leaving) return;
       leaving = true;
       window.removeEventListener("keydown", onKey);
+      disposeToys();
       playSe("transition");
       await cover();
       stopAmbient();

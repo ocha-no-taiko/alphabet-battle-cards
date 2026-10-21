@@ -297,7 +297,7 @@ export function artKey(a: Art): string {
   return a.ch.map((r) => r.join("")).join("\n") + a.co.map((r) => r.join("")).join("");
 }
 
-export const FONT_FAMILY = "'JetBrains Mono ABC', 'UDEV Gothic ABC', monospace";
+export const FONT_FAMILY = "'JetBrains Mono ABC', 'Kaisotai ABC', 'UDEV Gothic ABC', monospace";
 
 /** Canvas に描く（Three.js のテクスチャ用）。1 文字のセルは 0.6em × 1.2em */
 export function artToCanvas(a: Art, fontPx = 26): HTMLCanvasElement {

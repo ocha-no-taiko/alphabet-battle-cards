@@ -31,7 +31,19 @@ let renderer: THREE.WebGLRenderer | null = null;
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let flights: Flight[] = [];
-let ambient: { group: THREE.Group; vx: number; vy: number; vr: number; flip: number }[] = [];
+interface Floater {
+  group: THREE.Group;
+  vx: number;
+  vy: number;
+  vr: number;
+  flip: number;
+  /** クリックで足された、残りの回転量（ラジアン） */
+  boost: number;
+  pop: number;
+  base: THREE.Vector3;
+}
+let ambient: Floater[] = [];
+const raycaster = new THREE.Raycaster();
 let raf = 0;
 let timer = 0;
 const texCache = new Map<string, THREE.CanvasTexture>();
@@ -59,7 +71,7 @@ export function initFlip(): void {
   camera = new THREE.PerspectiveCamera(FOV, 1, 10, 10000);
   resize();
   window.addEventListener("resize", resize);
-  (window as unknown as { __flip: unknown }).__flip = { scene, camera, renderer, get ambient() { return ambient; }, get flights() { return flights; } };
+  (window as unknown as { __flip: unknown }).__flip = { scene, camera, renderer, get ambient() { return ambient; }, get flights() { return flights; }, pick: (x: number, y: number) => pickAmbient(x, y) };
 }
 
 function resize(): void {
@@ -119,6 +131,17 @@ function loop(): void {
     a.group.position.y += a.vy;
     a.group.rotation.y += a.flip;
     a.group.rotation.z += a.vr;
+    if (a.boost > 0) {
+      const step = Math.min(a.boost, 0.22);
+      a.group.rotation.y += step;
+      a.boost -= step;
+    }
+    if (a.pop > 0) {
+      a.pop = Math.max(0, a.pop - 0.04);
+      const k = 1 + Math.sin(a.pop * Math.PI) * 0.35;
+      a.group.scale.set(a.base.x * k, a.base.y * k, 1);
+      a.group.position.z = a.base.z + Math.sin(a.pop * Math.PI) * 300;
+    }
     const H = window.innerHeight / 2 + 200;
     if (a.group.position.y < -H) a.group.position.y = H;
     if (a.group.position.y > H) a.group.position.y = -H;
@@ -264,9 +287,43 @@ export function startAmbient(arts: Art[]): void {
     group.position.set(((i / arts.length) - 0.5) * W * 1.05, ((i * 53) % 100) / 100 * H - H / 2, -200 - ((i * 71) % 400));
     group.rotation.y = i;
     scene.add(group);
-    ambient.push({ group, vx: 0, vy: -(0.25 + ((i * 13) % 7) / 14) * s, vr: (((i % 3) - 1) * 0.0015), flip: 0.004 + (i % 4) * 0.002 });
+    ambient.push({
+      group, vx: 0, vy: -(0.25 + ((i * 13) % 7) / 14) * s, vr: (((i % 3) - 1) * 0.0015), flip: 0.004 + (i % 4) * 0.002,
+      boost: 0, pop: 0, base: new THREE.Vector3(group.scale.x, group.scale.y, group.position.z),
+    });
   });
   kick();
+}
+
+/** 画面上の点にある背景のカード（なければ -1） */
+export function pickAmbient(clientX: number, clientY: number): number {
+  if (!renderer || !ambient.length) return -1;
+  const ndc = new THREE.Vector2((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObjects(ambient.map((a) => a.group), true);
+  if (!hits.length) return -1;
+  return ambient.findIndex((a) => a.group.children.includes(hits[0].object as THREE.Mesh));
+}
+
+/** 背景のカードを裏返す。見えていない側の面を newArt に差し替えてから半回転させる */
+export function flipAmbient(i: number, newArt: Art): void {
+  const a = ambient[i];
+  if (!a || a.boost > 0) return;
+  const [front, back] = a.group.children as THREE.Mesh[];
+  // 表（front）は cos(角度) >= 0 のときに見えている。見えていない側を差し替えて、そちらが正面に来るまで回す
+  const frontShowing = Math.cos(a.group.rotation.y) >= 0;
+  const hidden = frontShowing ? back : front;
+  (hidden.material as THREE.MeshBasicMaterial).map = texture(newArt);
+  const target = (Math.round(a.group.rotation.y / Math.PI) + 1) * Math.PI;
+  a.boost = target - a.group.rotation.y;
+  if (a.boost < 0.5) a.boost += Math.PI * 2;
+  a.pop = 1;
+  kick();
+}
+
+/** 背景のカードを全部いっせいに裏返す */
+export function flipAllAmbient(art: (i: number) => Art): void {
+  ambient.forEach((_, i) => setTimeout(() => flipAmbient(i, art(i)), i * 60));
 }
 
 export function stopAmbient(): void {

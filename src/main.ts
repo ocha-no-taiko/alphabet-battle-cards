@@ -35,6 +35,7 @@ async function main(): Promise<void> {
     await Promise.all([
       document.fonts.load("16px 'JetBrains Mono ABC'"),
       document.fonts.load("bold 16px 'JetBrains Mono ABC'"),
+      document.fonts.load("16px 'Kaisotai ABC'", "あ"),
       document.fonts.load("16px 'UDEV Gothic ABC'", "あ"),
       document.fonts.load("bold 16px 'UDEV Gothic ABC'", "あ"),
     ]);

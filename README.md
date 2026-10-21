@@ -74,6 +74,12 @@ npm run build        # 型チェック + dist/ へ出力（相対パスなので
 - 進化: 属性の色で光り、カードが 3 回転して大文字に。技・記号・お釣りもそれぞれ光る
 - 画面の切り替え: 文字が流れるワイプで切り替わる。タイトルはロゴがグリッチしながら現れ、メニューが順に入ってくる
 
+### タイトルの遊び
+
+- 背景で舞っているカードをクリックすると、手前に跳ねて別のカードに裏返る
+- ロゴの ABC をクリックするとグリッチして、一瞬ほかの 3 文字に化ける。10 回目は全部のカードが裏返る
+- キーボードで `a` `b` `c` と打つと、全部のカードがいっせいに裏返る
+
 ## トロフィーカード
 
 条件を満たすと、トロフィーカード（全 18 枚、BRONZE / SILVER / GOLD / PLATINUM）が手に入ります。
@@ -84,13 +90,19 @@ npm run build        # 型チェック + dist/ へ出力（相対パスなので
 
 ## フォント
 
-英数字は JetBrains Mono、日本語は UDEV Gothic 35（英数字が JetBrains Mono でできた日本語フォント、SIL OFL 1.1）。
-日本語はゲームで使う文字とかな・全角記号だけに絞って同梱しています（約 140 KB × 2）。
-文言に新しい漢字を足して、そこだけ別のフォントで表示されたら、次を実行します（uv が必要）:
+- 英数字: JetBrains Mono（同梱、SIL OFL 1.1）
+- 日本語: **廻想体 ネクストUP（B）**（[もじワク研究](https://moji-waku.com/kaiso/)、フリーフォント・商用可・クレジット不要）
+- 廻想体が無いときの代わり: UDEV Gothic 35（同梱、SIL OFL 1.1。ゲームで使う文字だけに絞ってある）
+
+廻想体の[使用許容範囲](https://moji-waku.com/mj_work_license/)は、Web フォントとしてサーバに置くことは可、無断の再配布・フォントデータの改変は不可です。
+そのため**フォントのファイルはリポジトリに入れていません**（`.gitignore` 済み）。作者が配布している Web フォント（`kaiso_up_web.zip`）を、手を加えずにそのまま使います。
+`abc-play` は、ファイルが無ければ最初に作者のサイトから取ってきます。手動で取るときは:
 
 ```bash
-npm run font:jp
+npm run font:kaiso
 ```
+
+UDEV Gothic の文字を足すとき（文言に新しい漢字を足して、廻想体が無い環境で別のフォントになったとき）は `npm run font:jp`（uv が必要）。
 
 ## 音声
 
@@ -163,3 +175,4 @@ public/fonts/ JetBrains Mono 2.304（SIL OFL 1.1、罫線・ブロック文字�
 
 フォント JetBrains Mono は SIL Open Font License 1.1（`public/fonts/OFL.txt`）。
 UDEV Gothic は SIL Open Font License 1.1（`public/fonts/UDEVGothic-LICENSE.txt`）。
+廻想体 ネクストUP は もじワク研究 のフリーフォント（使用許容範囲は上記リンク）。リポジトリには含まない。
