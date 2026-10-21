@@ -12,7 +12,12 @@ import { esc, fmt } from "../text.ts";
 import { hasTrophy, TROPHIES, trophyCount, unlockedBacks } from "../trophies.ts";
 
 const C = text.collection;
-const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+// 次のフレームを待つ（画面が隠れていて rAF が止まっていても、50ms で進む）
+const nextFrame = () => new Promise<void>((r) => {
+  const done = () => r();
+  requestAnimationFrame(() => setTimeout(done, 0));
+  setTimeout(done, 50);
+});
 
 function rankLabel(rank: string): string {
   return (trophiesJson.ranks as Record<string, { label: string }>)[rank]?.label ?? rank;
@@ -26,20 +31,26 @@ export async function revealTrophies(host: HTMLElement, list: TrophyDef[]): Prom
     const backName = t.back ? BACKS[t.back]?.name : "";
     m.el.innerHTML = `<div class="trophy-head" style="color:${c1};visibility:hidden">TROPHY GET!</div>
       <pre class="card s-trophy roulette">${artToHtml(backArt())}</pre>
+      <p class="dim small skip-hint">${C.skip}</p>
       <h2 style="color:${c1}">${esc(t.name)} <span class="dim">${rankLabel(t.rank)}</span></h2>
       <p>${esc(t.desc)}</p>
       ${backName ? `<p class="ok">${fmt(C.backUnlocked, { name: esc(backName) })}</p>` : ""}
       <div class="dlg-buttons center"><button class="btn hot" data-go disabled>[ ${C.next} ]</button></div>`;
+    // ルーレットはクリックで飛ばせる（ダイアログを出した直後から受け付ける）
+    let skip = false;
+    const onSkip = () => (skip = true);
+    m.el.addEventListener("click", onSkip);
     await nextFrame();
     const el = m.el.querySelector<HTMLElement>(".card")!;
-    // スロットのように、いろいろなトロフィーが高速で入れ替わり、だんだん遅くなって止まる
+    // スロットのように、いろいろなトロフィーが高速で入れ替わり、だんだん遅くなって止まる。クリックで飛ばせる
     const pool = TROPHIES.filter((x) => x.id !== t.id);
-    for (let delay = 45; delay < 300; delay *= 1.13) {
+    for (let delay = 45; delay < 300 && !skip; delay *= 1.13) {
       const r = pool[Math.floor(Math.random() * pool.length)];
       el.innerHTML = artToHtml(Math.random() < 0.3 ? backArt() : trophyArt(r, Math.random() < 0.4));
       playSe("roulette", 0.5);
       await new Promise((res) => setTimeout(res, delay));
     }
+    m.el.removeEventListener("click", onSkip);
     el.classList.remove("roulette");
     el.classList.add("holo");
     el.innerHTML = artToHtml(trophyArt(t));
@@ -49,6 +60,7 @@ export async function revealTrophies(host: HTMLElement, list: TrophyDef[]): Prom
     await flipInPlace(to, backArt(), trophyArt(t), { flips: 3, duration: 900, lift: 240 });
     el.style.visibility = "";
     m.el.querySelector<HTMLElement>(".trophy-head")!.style.visibility = "";
+    m.el.querySelector(".skip-hint")?.remove();
     flash(c1, 0.55, 800);
     sparks({ x: to.x + to.w / 2, y: to.y + to.h / 2 }, [c1, c2, theme.fg], 60, 2);
     const btn = m.el.querySelector<HTMLButtonElement>("[data-go]")!;

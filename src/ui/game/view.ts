@@ -103,6 +103,11 @@ export function lethalTarget(s: GameState): PlayerId | null {
   return d > 0 && d >= target.unit.hp ? q : null;
 }
 
+/** LETHAL は、自分が操作を選んでいる間だけ出す（ターン終了後の攻撃の演出中は消して、トドメを目立たせる） */
+function showLethal(m: ViewModel): boolean {
+  return m.interactive && m.s.current === m.viewer;
+}
+
 function row(m: ViewModel, p: PlayerId, who: "me" | "opp"): string {
   const s = m.s;
   const pl = s.players[p];
@@ -116,7 +121,7 @@ function row(m: ViewModel, p: PlayerId, who: "me" | "opp"): string {
     <div class="piles">${pile(m, p, "deck", who)}${pile(m, p, "trash", who)}</div>
     <div class="storage" data-tut="storage-${who}">${storage.join("")}</div>
     <div class="subs" data-tut="subs-${who}">${subs.join("")}</div>
-    <div class="main-slot ${lethalTarget(s) === p ? "lethal-target" : ""}" data-tut="main-${who}" data-main="${p}">${main}</div>
+    <div class="main-slot ${showLethal(m) && lethalTarget(s) === p ? "lethal-target" : ""}" data-tut="main-${who}" data-main="${p}">${main}</div>
   </div>`;
 }
 
@@ -179,7 +184,7 @@ function infoLine(m: ViewModel, p: PlayerId, who: "me" | "opp"): string {
     <span class="ko ${match ? "match" : ""}" data-tut="ko-${who}">${text.status.ko} ${pips}</span>
     <span class="auto" data-tut="auto-${who}" title="${tip}">${text.status.auto} <b>${a.total}</b></span>${hand}
     ${match ? `<span class="match-chip">MATCH POINT</span>` : ""}
-    ${lethalTarget(s) === other(p) && s.current === p ? `<span class="lethal-chip">LETHAL</span>` : ""}
+    ${showLethal(m) && lethalTarget(s) === other(p) && s.current === p ? `<span class="lethal-chip">LETHAL</span>` : ""}
     <span class="chips">${chips(m, p)}</span></div>`;
 }
 

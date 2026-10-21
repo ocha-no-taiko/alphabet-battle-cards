@@ -4,6 +4,7 @@ import text from "../../data/text.json" with { type: "json" };
 import theme from "../../data/theme.json" with { type: "json" };
 import { cpuAction, makeCpu, type Cpu } from "../../ai/cpu.ts";
 import { applyAction, createGame, type CreateOptions } from "../../engine/game.ts";
+import { DECK_PRESETS, DEFAULT_PRESET } from "../../engine/data.ts";
 import { other, waitingFor } from "../../engine/query.ts";
 import type { Action, DeckList, GameEvent, GameState, PlayerId } from "../../engine/types.ts";
 import { setLayer, setSpeed } from "../flip3d.ts";
@@ -29,6 +30,8 @@ export interface SessionOpts {
   decks: [DeckList, DeckList];
   /** プリセットのデックなら、その id（トロフィー「全デック制覇」用） */
   deckIds?: [string | null, string | null];
+  /** デックの名前（結果を X で共有するときに使う） */
+  deckNames?: [string, string];
   onExit: () => void;
 }
 
@@ -50,7 +53,6 @@ export class Session {
   private tutorial: Tutorial | null = null;
   private dialogOpen = false;
   private record: GameRecord = newRecord();
-  private animFx = { combo: 0 };
   private lethalTurn = -1;
 
   constructor(private stage: HTMLElement, private opts: SessionOpts) {
@@ -189,7 +191,7 @@ export class Session {
     const canEnd = mine && !!this.resolveInput && !this.busy && !s.pending.length && s.phase === "main";
     const pend = s.pending[0];
     // 自分のターンに、ターンを終えれば自動ダメージで倒せる見込みなら LETHAL（1 ターンに 1 回だけ音を鳴らす）
-    const lethal = mine && lethalTarget(s) === other(this.viewer);
+    const lethal = canEnd && lethalTarget(s) === other(this.viewer);
     if (lethal && this.lethalTurn !== s.turnNumber) {
       this.lethalTurn = s.turnNumber;
       playSe("lethal");
@@ -323,7 +325,6 @@ export class Session {
         speed: prefs.speed,
         render: (s, hidden) => this.render(s, hidden),
         onEvents: (evs, s) => this.log(evs, s),
-        fx: this.animFx,
       },
       prev,
       r.events,
@@ -404,6 +405,33 @@ export class Session {
     return { type: "setup", player: p, main: byLetter(cs.main), subs: cs.subs.map(byLetter) };
   }
 
+  /** チュートリアルのあとの「もう一度」は、スターター対ランダムなプリセットの CPU 戦 */
+  private afterTutorialOpts(): SessionOpts {
+    const mine = DECK_PRESETS.find((d) => d.id === DEFAULT_PRESET) ?? DECK_PRESETS[0];
+    const cpu = DECK_PRESETS[Math.floor(Math.random() * DECK_PRESETS.length)];
+    return { ...this.opts, mode: "cpu", decks: [mine, cpu], deckIds: [mine.id, cpu.id], deckNames: [mine.name, cpu.name] };
+  }
+
+  /** 結果を X の投稿画面に入れて開く（投稿するかは本人が決める） */
+  private share(): void {
+    const s = this.s;
+    const X = text.share;
+    const deckName = (p: PlayerId) => (this.opts.mode === "tutorial" ? X.tutorialDeck : this.opts.deckNames?.[p] ?? X.customDeck);
+    const units = (p: PlayerId) => {
+      const list = this.opts.mode === "tutorial" ? (TUTORIAL.decks[p] as DeckList).units : this.opts.decks[p].units;
+      return list.join(" ");
+    };
+    const vars = {
+      deck: deckName(0), units: units(0), opp: this.names[1], oppDeck: deckName(1),
+      kos: s.players[0].kos, lost: s.players[1].kos, turns: s.turnNumber,
+      winner: this.names[s.winner ?? 0], p1: this.names[0], p2: this.names[1],
+      deck1: deckName(0), deck2: deckName(1), units1: units(0), units2: units(1), kos1: s.players[0].kos, kos2: s.players[1].kos,
+    };
+    const tpl = this.opts.mode === "hotseat" ? X.hotseat : s.winner === 0 ? X.win : X.lose;
+    const url = `${X.url}?text=${encodeURIComponent(fmt(tpl, vars))}&hashtags=${encodeURIComponent(X.hashtags)}`;
+    window.open(url, "_blank", "noopener");
+  }
+
   private async gameOver(): Promise<void> {
     const s = this.s;
     const O = text.over;
@@ -418,11 +446,11 @@ export class Session {
     if (got.length) await revealTrophies(this.root, got);
     const title = hot ? fmt(O.pWin, { who: this.names[w] }) : w === 0 ? O.win : O.lose;
     const reason = s.endReason === "kos" ? fmt(O.byKos, { n: s.rules.winKOs }) : O.byNoUnits;
-    const choice = await gameOverScreen(this.root, title, `${esc(reason)}・${fmt(O.turns, { n: s.turnNumber })}`, win);
+    const choice = await gameOverScreen(this.root, title, `${esc(reason)}・${fmt(O.turns, { n: s.turnNumber })}`, win, () => this.share());
     if (choice === "again") {
       await cover();
       this.root.remove();
-      const next = new Session(this.stage, this.opts.mode === "tutorial" ? { ...this.opts, mode: "cpu" } : this.opts);
+      const next = new Session(this.stage, this.opts.mode === "tutorial" ? this.afterTutorialOpts() : this.opts);
       next.start();
       void uncover();
     } else void this.exit();

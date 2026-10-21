@@ -17,8 +17,8 @@ import { attachTitleToys } from "./titleToys.ts";
 const T = text.title;
 
 export type TitleChoice =
-  | { kind: "cpu"; decks: [DeckList, DeckList]; deckIds: [string | null, string | null] }
-  | { kind: "hotseat"; decks: [DeckList, DeckList]; deckIds: [string | null, string | null] }
+  | { kind: "cpu"; decks: [DeckList, DeckList]; deckIds: [string | null, string | null]; deckNames: [string, string] }
+  | { kind: "hotseat"; decks: [DeckList, DeckList]; deckIds: [string | null, string | null]; deckNames: [string, string] }
   | { kind: "tutorial" }
   | { kind: "deck" }
   | { kind: "collection" };
@@ -29,19 +29,19 @@ export function deckOptions(): { id: string; name: string; deck: DeckList }[] {
   return out;
 }
 
-function resolveDeck(id: string): { deck: DeckList; presetId: string | null } {
+function resolveDeck(id: string): { deck: DeckList; presetId: string | null; name: string } {
   if (id === "random") {
     const d = DECK_PRESETS[Math.floor(Math.random() * DECK_PRESETS.length)];
-    return { deck: d, presetId: d.id };
+    return { deck: d, presetId: d.id, name: d.name };
   }
-  const deck = deckOptions().find((d) => d.id === id)?.deck ?? DECK_PRESETS[0];
-  return { deck, presetId: id.startsWith("preset:") ? id.slice(7) : null };
+  const opt = deckOptions().find((d) => d.id === id) ?? deckOptions()[0];
+  return { deck: opt.deck, presetId: opt.id.startsWith("preset:") ? opt.id.slice(7) : null, name: opt.name.replace(/^★ /, "") };
 }
 
-function pair(a: string, b: string): { decks: [DeckList, DeckList]; deckIds: [string | null, string | null] } {
+function pair(a: string, b: string): Pick<Extract<TitleChoice, { kind: "cpu" }>, "decks" | "deckIds" | "deckNames"> {
   const x = resolveDeck(a);
   const y = resolveDeck(b);
-  return { decks: [x.deck, y.deck], deckIds: [x.presetId, y.presetId] };
+  return { decks: [x.deck, y.deck], deckIds: [x.presetId, y.presetId], deckNames: [x.name, y.name] };
 }
 
 export function fakeUnit(letter: string, evolved = false): UnitCard {

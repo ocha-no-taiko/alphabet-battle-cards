@@ -254,7 +254,7 @@ export function passScreen(host: HTMLElement, who: string, prev: string): Promis
   });
 }
 
-export function gameOverScreen(host: HTMLElement, title: string, sub: string, win: boolean): Promise<"again" | "title"> {
+export function gameOverScreen(host: HTMLElement, title: string, sub: string, win: boolean, onShare?: () => void): Promise<"again" | "title"> {
   const O = text.over;
   const m = openModal(host, "over-dlg");
   const colors: [string, string][] = win
@@ -262,7 +262,7 @@ export function gameOverScreen(host: HTMLElement, title: string, sub: string, wi
     : [[theme.danger, theme.attr.Diagonal[1]], [theme.dim, theme.faint]];
   m.el.innerHTML = `<pre class="banner-art">${artToHtml(bannerArt(title, colors))}</pre>
     <p class="dlg-text center">${sub}</p>
-    <div class="dlg-buttons center"><button class="btn hot" data-again>[ ${O.again} ]</button><button class="btn" data-title>[ ${O.title} ]</button></div>`;
+    <div class="dlg-buttons center"><button class="btn hot" data-again>[ ${O.again} ]</button><button class="btn" data-title>[ ${O.title} ]</button>${onShare ? `<button class="btn share" data-share>[ ${text.share.button} ]</button>` : ""}</div>`;
   return new Promise((resolve) => {
     m.el.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
@@ -272,6 +272,8 @@ export function gameOverScreen(host: HTMLElement, title: string, sub: string, wi
       } else if (t.closest("[data-title]")) {
         m.close();
         resolve("title");
+      } else if (t.closest("[data-share]")) {
+        onShare?.();
       }
     });
   });

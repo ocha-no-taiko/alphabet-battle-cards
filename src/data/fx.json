@@ -14,11 +14,6 @@
   "gameOver": { "flash": 1, "flashMs": 1100, "shake": 22 },
   "lunge": { "px": 46, "ms": 420 },
   "hitStopMs": 90,
-  "_crit": "この値以上のダメージで CRITICAL（画面が止まって寄る）",
-  "crit": { "min": 30, "freezeMs": 180, "zoom": 1.045 },
-  "_combo": "1 ターンに相手のメインへ入ったダメージの回数。この数から HIT 表示",
-  "combo": { "min": 2 },
-  "confetti": { "count": 170, "ms": 2800 },
   "_lethal": "自分のターンに、自動ダメージで相手のメインを倒せる見込みなら LETHAL を出す",
   "lethal": true,
   "wipe": { "ms": 380, "hold": 80, "flickerMs": 60 }

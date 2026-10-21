@@ -460,37 +460,14 @@ body.pointing { cursor: pointer; }
 
 /* ---- パチンコ的な演出 ---- */
 .banner.ascii pre { font-size: 9px; line-height: 1.2; margin: 0; }
-.ascii-band {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 16px 48px 12px; background: rgba(6, 6, 10, 0.82);
-  border-top: 1px solid var(--accent); border-bottom: 1px solid var(--accent);
-  box-shadow: 0 0 40px -6px var(--accent);
-}
-.ascii-band small { font-size: 14px; letter-spacing: 6px; color: var(--dim); }
+/* 看板は背景なし（EVOLVE と同じ）。盤面の上でも読めるよう、文字の周りだけ暗くぼかす */
+.ascii-band { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.banner pre { filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 10px rgba(0, 0, 0, 0.85)); }
+.ascii-band small { font-size: 14px; letter-spacing: 6px; color: var(--fg); text-shadow: 0 0 6px #000, 0 0 2px #000; }
 .banner.turn.ascii .ascii-band { animation: turnSweep 1s cubic-bezier(.2,.8,.2,1) both; }
-.banner.crit .ascii-band { border-color: var(--gold); box-shadow: 0 0 60px -4px var(--gold); background: rgba(40, 20, 0, 0.75); }
-.banner.crit pre { animation: glitch 0.2s steps(2) 3; }
 .banner.match .ascii-band { animation: matchPulse 0.5s ease-in-out 3; }
 @keyframes matchPulse { 50% { filter: brightness(1.6) hue-rotate(40deg); transform: scale(1.04); } }
 
-.combo-pop {
-  position: fixed; transform: translate(-50%, -50%); pointer-events: none; z-index: 57;
-  font-weight: 700; letter-spacing: 2px; white-space: nowrap; color: var(--gold);
-  text-shadow: 0 0 14px currentColor, 3px 3px 0 #000;
-  animation: comboIn 1.2s cubic-bezier(.2,.9,.3,1) forwards;
-}
-.combo-pop b { font-size: 1.6em; }
-.combo-pop.c3 { color: #ffb43d; }
-.combo-pop.c4 { color: var(--accent2); }
-.combo-pop.c5, .combo-pop.c6 { color: var(--accent); animation-name: comboIn, comboHue; animation-duration: 1.2s, 0.3s; animation-iteration-count: 1, infinite; }
-@keyframes comboIn {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(2.2) rotate(-8deg); }
-  15% { opacity: 1; transform: translate(-50%, -50%) scale(0.9) rotate(3deg); }
-  25% { transform: translate(-50%, -50%) scale(1.05) rotate(-2deg); }
-  80% { opacity: 1; transform: translate(-50%, -60%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
-}
-@keyframes comboHue { to { filter: hue-rotate(360deg); } }
 .popup.wild { color: var(--gold); font-weight: 700; letter-spacing: 3px; }
 
 .main-slot { position: relative; }
@@ -516,3 +493,12 @@ body.pointing { cursor: pointer; }
 
 .card.roulette { animation: roulette 0.12s steps(2) infinite; }
 @keyframes roulette { 50% { filter: brightness(1.5) blur(0.6px); transform: translateY(-2px); } }
+
+/* 先攻決め */
+.coin-stage { position: fixed; inset: 0; z-index: 35; pointer-events: none; background: radial-gradient(ellipse at center, rgba(6, 6, 10, 0.55), rgba(6, 6, 10, 0.88)); }
+.coin-q { position: absolute; transform: translate(-50%, -100%); }
+.coin-q.result { transform: translate(-50%, 0); animation: coinResult 0.5s cubic-bezier(.2,.9,.3,1.4) both; }
+.coin-q pre { font-size: 9px; line-height: 1.2; margin: 0; filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 10px rgba(0, 0, 0, 0.85)); }
+@keyframes coinResult { from { opacity: 0; transform: translate(-50%, 0) scale(1.6); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+.coin-result { position: absolute; margin: 0; animation: coinGlow 0.6s ease-in-out infinite alternate; }
+@keyframes coinGlow { from { box-shadow: 0 0 0 2px var(--glow), 0 0 20px var(--glow); } to { box-shadow: 0 0 0 3px var(--glow), 0 0 60px 8px var(--glow); } }

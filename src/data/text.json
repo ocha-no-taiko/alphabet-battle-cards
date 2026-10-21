@@ -240,11 +240,23 @@
     "kos": "撃破 {k} 回・進化 {e} 体",
     "hotseat": "2 人対戦 {h} 回",
     "next": "次へ",
+    "skip": "クリックで飛ばす",
     "back": "タイトルへ",
     "menu": "コレクション",
     "count": "トロフィー {got}/{total}"
   },
   "sound": { "on": "音: ON", "off": "音: OFF" },
+  "share": {
+    "_comment": "結果を X で共有する文面。url は X の投稿画面（文面を入れた状態で開くだけで、投稿は本人が押す）",
+    "button": "X で共有",
+    "url": "https://x.com/intent/post",
+    "hashtags": "ABCカードゲーム",
+    "win": "ABC で {opp} に勝ちました！\nデック「{deck}」（{units}）\n撃破 {kos} - {lost}・{turns} ターン",
+    "lose": "ABC で {opp} に負けました…\nデック「{deck}」（{units}）\n撃破 {kos} - {lost}・{turns} ターン",
+    "hotseat": "ABC の 2 人対戦で {winner} が勝ちました！\n{p1}「{deck1}」 vs {p2}「{deck2}」\n撃破 {kos1} - {kos2}・{turns} ターン",
+    "tutorialDeck": "チュートリアル",
+    "customDeck": "マイデック"
+  },
   "rules": [
     { "title": "勝ち方", "body": [
       "2 人で対戦します。相手のメインを 5 回撃破した側の勝ち。",

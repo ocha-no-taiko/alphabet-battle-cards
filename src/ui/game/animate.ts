@@ -3,12 +3,12 @@
 import theme from "../../data/theme.json" with { type: "json" };
 import text from "../../data/text.json" with { type: "json" };
 import { UNITS } from "../../engine/data.ts";
-import { locate, type Zone } from "../../engine/query.ts";
+import { locate, other, type Zone } from "../../engine/query.ts";
 import type { GameEvent, GameState, PlayerId } from "../../engine/types.ts";
 import { artKey, artToHtml, backArt, bannerArt, labelArt } from "../ascii.ts";
 import { flipInPlace, fly, rectOf, type Rect } from "../flip3d.ts";
 import { playSe } from "../audio.ts";
-import { centerOf, confetti, flash, FX, hitBlink, lunge, shake as shakeScreen, sparks, zoomPunch } from "../fx.ts";
+import { centerOf, finished, flash, FX, hitBlink, lunge, shake as shakeScreen, sparks } from "../fx.ts";
 import { visibleArt } from "./view.ts";
 
 export interface AnimHost {
@@ -18,8 +18,6 @@ export interface AnimHost {
   speed: number;
   render: (s: GameState, hidden: Set<number>) => void;
   onEvents: (evs: GameEvent[], s: GameState) => void;
-  /** 対戦をまたいで持つ演出の状態（1 ターンのヒット数） */
-  fx: { combo: number };
 }
 
 /** 看板に出す英字の名前（あなた → YOU） */
@@ -116,20 +114,45 @@ export function banner(board: HTMLElement, html: string, cls: string, speed: num
   return wait(ms / speed).then(() => el.remove());
 }
 
-/** 「3 HIT!」の表示。回数が増えるほど大きく、色が派手になる */
-function comboPopup(board: HTMLElement, n: number, speed: number): void {
-  document.querySelectorAll(".combo-pop").forEach((e) => e.remove());
-  const b = rectOf(board);
-  const el = document.createElement("div");
-  el.className = `combo-pop c${Math.min(n, 6)}`;
-  el.innerHTML = `<b>${n}</b> HIT${n >= 4 ? "!!" : "!"}`;
-  el.style.left = `${b.x + b.w * 0.86}px`;
-  el.style.top = `${b.y + b.h * 0.47}px`;
-  el.style.fontSize = `${Math.round((22 + Math.min(n, 6) * 6) * (b.w / 1200))}px`;
-  el.style.animationDuration = `${1200 / speed}ms`;
-  document.body.appendChild(el);
-  playSe("combo");
-  setTimeout(() => el.remove(), 1250 / speed);
+/**
+ * 先攻決め。盤面を暗くして「WHO FIRST?」を出し、大きなカードを回して、ゆっくり止める。
+ * 止まったら光らせて、結果のカードと「○○ FIRST」をしばらく見せてから戻る
+ */
+async function coinToss(board: HTMLElement, host: AnimHost, first: PlayerId, sp: number): Promise<void> {
+  const names = host.names;
+  const color = (p: PlayerId) => (p === 0 ? theme.accent : theme.accent2);
+  const big = (p: PlayerId) => (names[p] === text.names.you ? "1" : names[p] === text.names.cpu ? "C" : String(p + 1));
+  const art = (p: PlayerId) => labelArt(big(p), asciiName(names, p), color(p));
+  const c = boardCenter(board, 0.16, 0.44);
+  const overlay = document.createElement("div");
+  overlay.className = "coin-stage";
+  overlay.innerHTML = `<div class="coin-q">${asciiBand("WHO FIRST?", RAINBOW)}</div>`;
+  document.body.appendChild(overlay);
+  const q = overlay.querySelector<HTMLElement>(".coin-q")!;
+  q.style.left = `${c.x + c.w / 2}px`;
+  q.style.top = `${c.y - 12}px`;
+  overlay.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 / sp, fill: "forwards" });
+  playSe("coin");
+  await fly({ from: c, to: c, startArt: art(other(first)), endArt: art(first), flips: 9, duration: 2300, lift: 280, anchor: true });
+  // 止まったカードをその場に残して光らせる
+  const card = document.createElement("pre");
+  card.className = "card coin-result";
+  card.innerHTML = artToHtml(art(first));
+  card.style.left = `${c.x}px`;
+  card.style.top = `${c.y}px`;
+  card.style.fontSize = `${c.h / (12 * 1.2)}px`;
+  card.style.setProperty("--glow", color(first));
+  overlay.appendChild(card);
+  flash(color(first), 0.5, 700);
+  sparks({ x: c.x + c.w / 2, y: c.y + c.h / 2 }, [color(first), theme.gold, theme.fg], 50, 1.6 * (rectOf(board).w / 1200));
+  playSe("first");
+  q.innerHTML = asciiBand(`${asciiName(names, first)} FIRST`, first === host.viewer || names[0] !== text.names.you ? RAINBOW : RED);
+  q.classList.add("result");
+  q.style.top = `${c.y + c.h + 14}px`;
+  await wait(1700 / sp);
+  const out = overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350 / sp, fill: "forwards" });
+  await finished(out, 350 / sp);
+  overlay.remove();
 }
 
 function artBanner(textStr: string, colors: [string, string][]): string {
@@ -247,18 +270,6 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
           if (c) sparks(c, [theme.danger, theme.gold, theme.fg], tier.sparks, tier.power * scale);
           playSe(ev.amount >= 25 ? "damage-big" : "damage");
           jobs.push(wait(FX.hitStopMs / sp));
-          // 1 ターンのヒット数（攻めている側から見て、相手のメインに入った回数）
-          if (ev.p !== snap.current) {
-            host.fx.combo++;
-            if (host.fx.combo >= FX.combo.min) comboPopup(board, host.fx.combo, sp);
-          }
-          if (ev.amount >= FX.crit.min) {
-            zoomPunch(screen);
-            flash(theme.gold, 0.35, 380);
-            jobs.push(banner(board, asciiBand("CRITICAL", [[theme.gold, theme.danger], [theme.fg, theme.gold]]), "crit ascii", sp, 900));
-            jobs.push(wait(FX.crit.freezeMs / sp));
-            playSe("critical");
-          }
           break;
         }
         case "heal": {
@@ -305,7 +316,6 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
         case "gameOver":
           flash("#ffffff", FX.gameOver.flash, FX.gameOver.flashMs);
           shakeScreen(screen, FX.gameOver.shake * scale);
-          if (ev.winner === host.viewer || host.names[0] !== text.names.you) confetti();
           break;
         case "pay": {
           playSe("pay");
@@ -355,7 +365,6 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
           break;
         }
         case "turn": {
-          host.fx.combo = 0;
           const vsCpu = host.names[0] === text.names.you;
           const word = vsCpu ? (ev.p === 0 ? "YOUR TURN" : "CPU TURN") : `${asciiName(host.names, ev.p)} TURN`;
           const mine = ev.p === host.viewer || !vsCpu;
@@ -363,15 +372,9 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
           playSe("turn");
           break;
         }
-        case "first": {
-          const c = boardCenter(board);
-          const names = host.names;
-          playSe("coin");
-          const art = (p: PlayerId) => labelArt(names[p] === text.names.you ? "1" : names[p] === text.names.cpu ? "C" : String(p + 1), names[p], p === 0 ? theme.accent : theme.accent2);
-          await fly({ from: c, to: c, startArt: art((1 - ev.p) as PlayerId), endArt: art(ev.p), flips: 7, duration: 1500, lift: 260 });
-          await banner(board, asciiBand(`${asciiName(names, ev.p)} FIRST`, RAINBOW), "turn ascii", sp, 1100);
+        case "first":
+          await coinToss(board, host, ev.p, sp);
           break;
-        }
       }
     }
     if (wild && wild.t === "draw") {

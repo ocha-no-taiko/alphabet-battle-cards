@@ -23,6 +23,7 @@ export interface GameRecord {
   revives: number;
   allAttrs: boolean;
   zorome: number;
+  sevens: number;
   straight: boolean;
   /** いまのターンの持ち主と、そのターン内の記録 */
   turnOwner: number;
@@ -40,7 +41,7 @@ export function newRecord(): GameRecord {
   return {
     maxHit: 0, evolves: 0, kos: 0, wildcard: 0, payCounts: {},
     symbolKO: false, needleKO: false, reflectKO: false, oneShot: false, gambleNine: false, revives: 0,
-    allAttrs: false, zorome: 0, straight: false,
+    allAttrs: false, zorome: 0, sevens: 0, straight: false,
     turnOwner: -1, turnKOs: 0, turnDamage: 0, turnSymbols: 0, maxTurnKOs: 0, maxTurnDamage: 0, maxTurnSymbols: 0,
     letters: [], symbols: [],
   };
@@ -106,6 +107,7 @@ export function track(rec: GameRecord, before: GameState, action: Action, events
   const values = pl.storage.map((id) => (after.cards[id] as { value: number }).value);
   const counts = values.reduce((m, v) => m.set(v, (m.get(v) ?? 0) + 1), new Map<number, number>());
   rec.zorome = Math.max(rec.zorome, ...counts.values(), 0);
+  rec.sevens = Math.max(rec.sevens, counts.get(7) ?? 0);
   if (values.length === 5) {
     const v = [...values].sort((a, b) => a - b);
     if (v.every((x, i) => i === 0 || x === v[i - 1] + 1)) rec.straight = true;
@@ -147,6 +149,7 @@ function meets(t: TrophyDef, rec: GameRecord | null, s: GameState | null, won: b
     case "revive": return rec.revives >= min;
     case "allAttrs": return rec.allAttrs;
     case "zorome": return rec.zorome >= min;
+    case "sevens": return rec.sevens >= min;
     case "straight": return rec.straight;
     case "turnKOs": return rec.maxTurnKOs >= min;
     case "turnDamage": return rec.maxTurnDamage >= min;

@@ -63,6 +63,7 @@ async function main(): Promise<void> {
         mode: c.kind,
         decks: c.kind === "tutorial" ? [{ units: [], symbols: [] }, { units: [], symbols: [] }] : c.decks,
         deckIds: c.kind === "tutorial" ? undefined : c.deckIds,
+        deckNames: c.kind === "tutorial" ? undefined : c.deckNames,
         onExit: resolve,
       });
       (window as unknown as { __abc: Session }).__abc = session;

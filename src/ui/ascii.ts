@@ -83,7 +83,7 @@ export function glyph(a: Art, x: number, y: number, key: string, c1: string, c2:
 /** 文字列を大きなドット文字で並べた看板（タイトルや K.O. など） */
 export function bannerArt(text: string, colors: [string, string][], shadow = true): Art {
   const keys = [...text];
-  const widths = keys.map((k) => (k === " " ? 4 : (GLYPHS[k]?.[0].length ?? 5) * 2 + 2));
+  const widths = keys.map((k) => (k === " " ? 7 : (GLYPHS[k]?.[0].length ?? 5) * 2 + 2));
   const w = widths.reduce((x, y) => x + y, 0) + 2;
   const a = blank(w, 7);
   let x = 1;

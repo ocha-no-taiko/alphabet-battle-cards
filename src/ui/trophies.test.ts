@@ -89,7 +89,16 @@ test("ストレートとゾロ目はストレージの並びで判定", () => {
   take(t, twos[2], "hand");
   const r2 = run(t, { type: "placeNumber", player: 0, card: twos[2] });
   assert.equal(r2.rec.zorome, 3);
+  assert.equal(r2.rec.sevens, 0);
   assert.equal(r2.rec.straight, false);
+
+  // 7 を 3 枚でジャックポット
+  const u = setup();
+  const sevens = Object.values(u.cards).filter((c) => c.owner === 0 && c.kind === "num" && c.value === 7).map((c) => c.id);
+  take(u, sevens[0], "storage");
+  take(u, sevens[1], "storage");
+  take(u, sevens[2], "hand");
+  assert.equal(run(u, { type: "placeNumber", player: 0, card: sevens[2] }).rec.sevens, 3);
 });
 
 test("一撃必殺: 満タンのメインを 1 回で倒す", () => {
