@@ -8,6 +8,8 @@ import type { GameEvent, GameState, PlayerId } from "../../engine/types.ts";
 import { artKey, artToHtml, backArt, bannerArt, labelArt } from "../ascii.ts";
 import { flipInPlace, fly, rectOf, type Rect } from "../flip3d.ts";
 import { fmt } from "../text.ts";
+import { playSe } from "../audio.ts";
+import { centerOf, flash, FX, hitBlink, lunge, shake as shakeScreen, sparks } from "../fx.ts";
 import { visibleArt } from "./view.ts";
 
 export interface AnimHost {
@@ -137,6 +139,13 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
     host.onEvents(g, snap);
     const after = cardRects(board);
     const jobs: Promise<void>[] = [];
+    const screen = board.parentElement;
+    const at = (id: number) => {
+      const r = after.get(id) ?? before.get(id);
+      return r ? { x: r.x + r.w / 2, y: r.y + r.h / 2 } : null;
+    };
+    const cardEl = (id: number) => board.querySelector(`.card[data-id="${id}"]`);
+    if (g.some((e) => e.t === "draw")) playSe("draw");
     let k = 0;
     const limit = 14;
     for (const id of moved) {
@@ -154,6 +163,7 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
       }
       const toTrash = zoneOf(snap, id)?.zone === "trash";
       const ko = g.some((e) => e.t === "ko" && e.id === id);
+      if (k === 0 && artKey(startArt) !== artKey(endArt)) playSe("flip", 0.7);
       jobs.push(
         fly({
           from,
@@ -186,34 +196,69 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
       switch (ev.t) {
         case "damage": {
           const r = after.get(ev.id) ?? before.get(ev.id);
-          if (r) popup(r, `-${ev.amount}`, "dmg", scale, sp);
+          if (ev.amount <= 0) {
+            if (r) popup(r, "GUARD", "guard", scale, sp);
+            playSe("guard");
+            break;
+          }
+          if (r) popup(r, `-${ev.amount}`, ev.amount >= 25 ? "dmg big" : "dmg", scale * (ev.amount >= 25 ? 1.5 : 1), sp);
+          const tier = [...FX.damage].reverse().find((t) => ev.amount >= t.min)!;
+          shakeScreen(screen, tier.shake * scale);
           shake(board, ev.id);
+          hitBlink(cardEl(ev.id));
+          const c = at(ev.id);
+          if (c) sparks(c, [theme.danger, theme.gold, theme.fg], tier.sparks, tier.power * scale);
+          playSe(ev.amount >= 25 ? "damage-big" : "damage");
+          jobs.push(wait(FX.hitStopMs / sp));
           break;
         }
         case "heal": {
           const r = after.get(ev.id) ?? before.get(ev.id);
           if (r) popup(r, `+${ev.amount}`, "heal", scale, sp);
+          const c = at(ev.id);
+          if (c) sparks(c, [theme.heal, theme.fg], 10, 0.6 * scale);
+          playSe("heal");
           break;
         }
         case "auto": {
           const main = snap.players[ev.p].main;
           const r = main !== null ? after.get(main) : null;
           if (r) popup(r, `AUTO ▶ ${ev.amount}`, "auto", scale, sp);
+          if (main !== null && ev.amount > 0) {
+            lunge(cardEl(main), ev.p === host.viewer ? -1 : 1);
+            playSe("attack");
+          }
           jobs.push(wait(450 / sp));
           break;
         }
         case "skill": {
           const c = snap.cards[ev.id];
           const r = after.get(ev.id);
-          board.querySelector(`.card[data-id="${ev.id}"]`)?.classList.add("pulse");
+          cardEl(ev.id)?.classList.add("pulse");
           if (c.kind === "unit" && r) popup(r, UNITS[c.letter].skill.name.toUpperCase(), "skill", scale, sp);
+          lunge(cardEl(ev.id), ev.p === host.viewer ? -0.5 : 0.5);
+          flash(theme.accent2, FX.skill.flash, FX.skill.flashMs);
+          playSe("skill");
           jobs.push(wait(500 / sp));
           break;
         }
         case "symbol":
+          flash(theme.sym[0], FX.symbol.flash, FX.symbol.flashMs);
+          playSe("symbol");
           jobs.push(wait(650 / sp));
           break;
+        case "place":
+          playSe("place");
+          break;
+        case "effect":
+          if (["guard", "half", "reflect", "protectStorage"].includes(ev.kind)) playSe("guard");
+          break;
+        case "gameOver":
+          flash("#ffffff", FX.gameOver.flash, FX.gameOver.flashMs);
+          shakeScreen(screen, FX.gameOver.shake * scale);
+          break;
         case "pay": {
+          playSe("pay");
           // お釣りが残ったカードは、その場で裏返して残りの値を見せる
           const r = ev.kept ? after.get(ev.kept.id) : null;
           if (ev.kept && r) {
@@ -232,20 +277,33 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
           else unhide(board, ev.id);
           const [c1, c2] = (theme.attr as unknown as Record<string, [string, string]>)[UNITS[(snap.cards[ev.id] as { letter: string }).letter].attr];
           jobs.push(banner(board, artBanner("EVOLVE", [[c1, c2]]), "evolve", sp, 1300));
+          flash(c1, FX.evolve.flash, FX.evolve.flashMs);
+          const c = at(ev.id);
+          if (c) sparks(c, [c1, c2, theme.gold], FX.evolve.sparks, 1.4 * scale);
+          playSe("evolve");
           break;
         }
-        case "ko":
+        case "ko": {
           jobs.push(banner(board, artBanner("K.O.", [[theme.danger, theme.accent2]]), "ko", sp, 1100));
+          flash("#ffffff", FX.ko.flash, FX.ko.flashMs);
+          shakeScreen(screen, FX.ko.shake * scale, 620);
+          const r = before.get(ev.id);
+          const c = r ? { x: r.x + r.w / 2, y: r.y + r.h / 2 } : centerOf(board.querySelector(`[data-main="${ev.p}"]`));
+          if (c) sparks(c, [theme.fg, theme.danger, theme.gold, theme.accent2], FX.ko.sparks, FX.ko.power * scale);
+          playSe("ko");
           break;
+        }
         case "turn": {
           const mine = host.names[ev.p];
           const label = host.names[0] === text.names.you ? (ev.p === 0 ? text.banner.yourTurn : text.banner.cpuTurn) : fmt(text.banner.pTurn, { who: mine });
           jobs.push(banner(board, `<div class="turn-banner">${label}<small>TURN ${ev.n}</small></div>`, "turn", sp, 900));
+          playSe("turn");
           break;
         }
         case "first": {
           const c = boardCenter(board);
           const names = host.names;
+          playSe("coin");
           const art = (p: PlayerId) => labelArt(names[p] === text.names.you ? "1" : names[p] === text.names.cpu ? "C" : String(p + 1), names[p], p === 0 ? theme.accent : theme.accent2);
           await fly({ from: c, to: c, startArt: art((1 - ev.p) as PlayerId), endArt: art(ev.p), flips: 7, duration: 1500, lift: 260 });
           await banner(board, `<div class="turn-banner">${fmt(text.banner.first, { who: names[ev.p] })}</div>`, "turn", sp, 1000);

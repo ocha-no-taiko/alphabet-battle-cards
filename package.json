@@ -11,7 +11,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 5211",
     "test": "node --test \"src/**/*.test.ts\"",
-    "sim": "node src/sim/cli.ts"
+    "sim": "node src/sim/cli.ts",
+    "font:jp": "uv run --no-project --with fonttools==4.59.0 --with brotli==1.1.0 python scripts/subset-jp-font.py"
   },
   "dependencies": {
     "three": "0.186.1"

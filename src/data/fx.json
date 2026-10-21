@@ -1,0 +1,18 @@
+{
+  "_comment": "演出の強さ。px は揺れの大きさ、ms は長さ。damage は与えたダメージ量で段階を分ける。",
+  "shake": { "ms": 420 },
+  "damage": [
+    { "min": 0, "shake": 5, "sparks": 10, "power": 0.7 },
+    { "min": 12, "shake": 10, "sparks": 18, "power": 1 },
+    { "min": 25, "shake": 18, "sparks": 30, "power": 1.4 },
+    { "min": 40, "shake": 26, "sparks": 44, "power": 1.8 }
+  ],
+  "ko": { "flash": 0.9, "flashMs": 650, "shake": 30, "sparks": 60, "power": 2.2 },
+  "evolve": { "flash": 0.45, "flashMs": 700, "sparks": 40 },
+  "skill": { "flash": 0.18, "flashMs": 260 },
+  "symbol": { "flash": 0.22, "flashMs": 320 },
+  "gameOver": { "flash": 1, "flashMs": 1100, "shake": 22 },
+  "lunge": { "px": 46, "ms": 420 },
+  "hitStopMs": 90,
+  "wipe": { "ms": 380, "hold": 80 }
+}

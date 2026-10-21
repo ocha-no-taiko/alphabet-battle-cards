@@ -1,0 +1,39 @@
+{
+  "_comment": "トロフィーカード。cond の stat は通算の記録（prefs の progress）、game は 1 回の対戦の記録で判定する（src/ui/trophies.ts）。en はカードに印字する英字名（13 文字まで）。glyph は glyphs.json のキー。back があるトロフィーを取ると、その裏面デザインが使えるようになる。",
+  "trophies": [
+    { "id": "first-game", "name": "初陣", "en": "FIRST GAME", "desc": "CPU との対戦を 1 回最後まで遊ぶ", "cond": { "stat": "games", "min": 1 }, "glyph": "1", "rank": "bronze" },
+    { "id": "tutorial", "name": "卒業証書", "en": "GRADUATE", "desc": "チュートリアルを最後まで進める", "cond": { "stat": "tutorialDone" }, "glyph": "?", "rank": "bronze" },
+    { "id": "first-win", "name": "初勝利", "en": "FIRST WIN", "desc": "CPU に 1 回勝つ", "cond": { "stat": "wins", "min": 1 }, "glyph": "W", "rank": "bronze" },
+    { "id": "hotseat", "name": "対人戦", "en": "VERSUS", "desc": "2 人対戦を 1 回最後まで遊ぶ", "cond": { "stat": "hotseatGames", "min": 1 }, "glyph": "&", "rank": "bronze" },
+    { "id": "wildcard", "name": "ワイルド", "en": "WILDCARD", "desc": "0 の 1 枚で、コスト 6 以上の技を払う", "cond": { "game": "wildcard", "min": 6 }, "glyph": "0", "rank": "bronze" },
+    { "id": "change", "name": "お釣り名人", "en": "KEEP CHANGE", "desc": "1 回の対戦で、同じ数字カード 1 枚から 3 回支払う", "cond": { "game": "sameCardPays", "min": 3 }, "glyph": "$", "rank": "bronze" },
+    { "id": "wins-5", "name": "五勝", "en": "5 WINS", "desc": "CPU に通算 5 勝", "cond": { "stat": "wins", "min": 5 }, "glyph": "5", "rank": "silver" },
+    { "id": "streak-3", "name": "三連勝", "en": "3 STREAK", "desc": "CPU に 3 連勝", "cond": { "stat": "bestStreak", "min": 3 }, "glyph": "3", "rank": "silver", "back": "flame" },
+    { "id": "speed", "name": "速攻", "en": "SPEED RUN", "desc": "14 ターン以内に CPU に勝つ", "cond": { "game": "speed", "max": 14 }, "glyph": "@bolt", "rank": "silver" },
+    { "id": "big-hit", "name": "会心の一撃", "en": "BIG HIT", "desc": "1 回で 40 以上のダメージを与える", "cond": { "game": "maxHit", "min": 40 }, "glyph": "Z", "rank": "silver" },
+    { "id": "evolve-3", "name": "大文字の宴", "en": "UPPERCASE", "desc": "1 回の対戦で 3 体を進化させる", "cond": { "game": "evolves", "min": 3 }, "glyph": "E", "rank": "silver" },
+    { "id": "perfect", "name": "完封", "en": "PERFECT", "desc": "1 体も撃破されずに CPU に勝つ", "cond": { "game": "perfect" }, "glyph": "@star", "rank": "gold" },
+    { "id": "comeback", "name": "大逆転", "en": "COMEBACK", "desc": "撃破数 4 まで追い込まれてから CPU に勝つ", "cond": { "game": "comeback", "min": 4 }, "glyph": "!", "rank": "gold" },
+    { "id": "evolutions-30", "name": "変身", "en": "METAMORPH", "desc": "通算 30 体を進化させる", "cond": { "stat": "evolutions", "min": 30 }, "glyph": "^", "rank": "gold", "back": "prism" },
+    { "id": "kos-50", "name": "撃破王", "en": "KO KING", "desc": "通算 50 回撃破する", "cond": { "stat": "kos", "min": 50 }, "glyph": "@skull", "rank": "gold", "back": "blood" },
+    { "id": "all-decks", "name": "全デック制覇", "en": "ALL DECKS", "desc": "プリセット 5 種類すべてで CPU に勝つ", "cond": { "stat": "deckWins" }, "glyph": "*", "rank": "gold", "back": "matrix" },
+    { "id": "wins-20", "name": "アルファベット王", "en": "ABC KING", "desc": "CPU に通算 20 勝", "cond": { "stat": "wins", "min": 20 }, "glyph": "@crown", "rank": "gold", "back": "royal" },
+    { "id": "complete", "name": "コンプリート", "en": "COMPLETE", "desc": "ほかのトロフィーをすべて集める", "cond": { "stat": "allTrophies" }, "glyph": "@crown", "rank": "platinum", "back": "platinum" }
+  ],
+  "ranks": {
+    "bronze": { "label": "BRONZE", "colors": ["#e79a5a", "#8a4f24"] },
+    "silver": { "label": "SILVER", "colors": ["#eef2ff", "#8a93b8"] },
+    "gold": { "label": "GOLD", "colors": ["#ffe15a", "#ff9a1f"] },
+    "platinum": { "label": "PLATINUM", "colors": ["#c6fbff", "#ff7ae0"] }
+  },
+  "_backs": "カードの裏面。chars を交互に敷き詰め、colors の 2 色でグラデーションにする。label は中央の 3 文字",
+  "backs": {
+    "": { "name": "スタンダード", "chars": ["╱", "╲"], "colors": ["#2a1f6b", "#1aa5c9"], "label": "ABC" },
+    "flame": { "name": "フレイム", "chars": ["^", "▲"], "colors": ["#ff3b1f", "#ffd23d"], "label": "HOT" },
+    "prism": { "name": "プリズム", "chars": ["░", "▒"], "colors": ["#ff4f9a", "#3fe0ff"], "label": "ABC" },
+    "blood": { "name": "ブラッド", "chars": ["x", "+"], "colors": ["#5a0010", "#ff3b5c"], "label": "K.O" },
+    "matrix": { "name": "マトリクス", "chars": ["0", "1"], "colors": ["#0a3d1a", "#5dff8f"], "label": "ABC" },
+    "royal": { "name": "ロイヤル", "chars": ["◆", "◇"], "colors": ["#4b1f7a", "#ffd84a"], "label": "KING" },
+    "platinum": { "name": "プラチナ", "chars": ["▓", "░"], "colors": ["#c6fbff", "#ff7ae0"], "label": "ALL" }
+  }
+}

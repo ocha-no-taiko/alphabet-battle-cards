@@ -19,6 +19,19 @@
         font-weight: 700;
         font-display: block;
       }
+      /* 日本語は UDEV Gothic 35（英数字が JetBrains Mono のフォント）。使う文字だけに絞ってある（npm run font:jp） */
+      @font-face {
+        font-family: "UDEV Gothic ABC";
+        src: url("fonts/UDEVGothic35-JP-Regular.woff2") format("woff2");
+        font-weight: 400;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "UDEV Gothic ABC";
+        src: url("fonts/UDEVGothic35-JP-Bold.woff2") format("woff2");
+        font-weight: 700;
+        font-display: block;
+      }
     </style>
   </head>
   <body>

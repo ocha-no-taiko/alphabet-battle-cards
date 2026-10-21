@@ -1,0 +1,41 @@
+{
+  "_comment": "BGM と効果音。値は audio/bgm・audio/se に置くファイル名（拡張子なし。mp3 / ogg / wav / m4a のどれでもよい）。ファイルが無いものは鳴らさない。",
+  "volume": { "bgm": 0.45, "se": 0.8 },
+  "fadeMs": 700,
+  "bgm": {
+    "title": "title",
+    "deck": "deck",
+    "collection": "collection",
+    "tutorial": "tutorial",
+    "battle": "battle",
+    "pinch": "pinch",
+    "result-win": "result-win",
+    "result-lose": "result-lose"
+  },
+  "_pinch": "どちらかの撃破数がこの数に達したら battle から pinch に切り替える",
+  "pinchKOs": 4,
+  "se": {
+    "click": "click",
+    "hover": "hover",
+    "error": "error",
+    "transition": "transition",
+    "draw": "draw",
+    "flip": "flip",
+    "place": "place",
+    "pay": "pay",
+    "skill": "skill",
+    "symbol": "symbol",
+    "attack": "attack",
+    "damage": "damage",
+    "damage-big": "damage-big",
+    "guard": "guard",
+    "heal": "heal",
+    "ko": "ko",
+    "evolve": "evolve",
+    "turn": "turn",
+    "coin": "coin",
+    "trophy": "trophy",
+    "win": "win",
+    "lose": "lose"
+  }
+}

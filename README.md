@@ -3,7 +3,7 @@
 アルファベットで戦う 2 人用カードゲームの、ブラウザ試作版です。
 カラーアスキーアートで描いた盤面に、Three.js でカードを裏返す演出を重ねています。
 
-- CPU 対戦 / 2 人対戦（同じ画面で交代）/ チュートリアル / デック編集 / ルール表示
+- CPU 対戦 / 2 人対戦（同じ画面で交代）/ チュートリアル / デック編集 / コレクション（トロフィーカード）/ ルール表示
 - ルールエンジンは画面から切り離した純粋な関数（`src/engine/`）。同じ seed なら同じ結果
 - カード・ルール・文言・色・CPU の重みは、すべて `src/data/*.json` で編集できる
 
@@ -58,11 +58,44 @@ npm run build        # 型チェック + dist/ へ出力（相対パスなので
 | `glyphs.json` | カードの大きな文字（5×5 ドット） |
 | `theme.json` | 色 |
 | `ai.json` | CPU の評価関数の重み |
+| `fx.json` | 演出の強さ（画面の揺れ・フラッシュ・火花の量・ワイプの速さ） |
+| `trophies.json` | トロフィーカードの条件・名前・ランクと、ごほうびの裏面デザイン |
+| `audio.json` | BGM・効果音のファイル名と音量 |
 
 効果の部品（`ops` の `op`）は `src/engine/effects.ts` にあります:
 `damage` `heal` `guard` `halfDamage` `reflect` `protectStorage` `seal` `needle` `costUp` `autoMinus` `oppSubMult` `storageCap`
 `autoBonus` `subMult` `extraSkill` `extraSymbol` `extraStorage` `costReduce` `boostStorage` `evoShift` `draw` `search` `recover`
 `storageToHand` `kick` `yank` `peekDiscard` `cycle` `reshuffleHand` `warp` `swapSub` `swapHandSub` `swapHp` `gamble` `revive` `cleanse`
+
+## 演出
+
+- 攻撃: カードが相手に向かって突っ込み、当たると画面が揺れて文字の火花が散る（ダメージが大きいほど強く揺れる。25 以上は大きな数字）
+- 撃破: 画面が白く光り、大きく揺れて、カードが回転しながらトラッシュへ
+- 進化: 属性の色で光り、カードが 3 回転して大文字に。技・記号・お釣りもそれぞれ光る
+- 画面の切り替え: 文字が流れるワイプで切り替わる。タイトルはロゴがグリッチしながら現れ、メニューが順に入ってくる
+
+## トロフィーカード
+
+条件を満たすと、トロフィーカード（全 18 枚、BRONZE / SILVER / GOLD / PLATINUM）が手に入ります。
+対戦のあとに 3D で裏返って登場し、タイトルの「コレクション」で眺められます（クリックで回る）。
+一部のトロフィーはごほうびとして**カードの裏面デザイン**が付き、コレクション画面で切り替えられます。
+条件は `trophies.json`、記録はブラウザの localStorage（`abc.prefs.v1` の `progress`）にあります。
+カードはすべて最初から使えます（解放の仕組みは入れていない）。
+
+## フォント
+
+英数字は JetBrains Mono、日本語は UDEV Gothic 35（英数字が JetBrains Mono でできた日本語フォント、SIL OFL 1.1）。
+日本語はゲームで使う文字とかな・全角記号だけに絞って同梱しています（約 140 KB × 2）。
+文言に新しい漢字を足して、そこだけ別のフォントで表示されたら、次を実行します（uv が必要）:
+
+```bash
+npm run font:jp
+```
+
+## 音声
+
+`audio/bgm/` と `audio/se/` にファイルを置くだけで鳴ります。ファイル名と鳴る場面は [audio/README.md](audio/README.md) を参照。
+右上の「音」ボタンで ON / OFF できます。
 
 ## 構成
 
@@ -129,3 +162,4 @@ public/fonts/ JetBrains Mono 2.304（SIL OFL 1.1、罫線・ブロック文字�
 ## ライセンス
 
 フォント JetBrains Mono は SIL Open Font License 1.1（`public/fonts/OFL.txt`）。
+UDEV Gothic は SIL Open Font License 1.1（`public/fonts/UDEVGothic-LICENSE.txt`）。

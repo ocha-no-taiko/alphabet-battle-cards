@@ -17,12 +17,18 @@ import { logLine } from "./log.ts";
 import { detailHtml, renderBoard } from "./view.ts";
 import { rulesOverlay } from "../screens/rules.ts";
 import { prefs, savePrefs } from "../prefs.ts";
+import { pinchKOs, playBgm, playSe, setSound, soundOn } from "../audio.ts";
+import { cover, uncover } from "../fx.ts";
+import { revealTrophies } from "../screens/collection.ts";
+import { finishCpuGame, finishHotseatGame, finishTutorial, newRecord, track, type GameRecord } from "../trophies.ts";
 
 export type Mode = "cpu" | "hotseat" | "tutorial";
 
 export interface SessionOpts {
   mode: Mode;
   decks: [DeckList, DeckList];
+  /** プリセットのデックなら、その id（トロフィー「全デック制覇」用） */
+  deckIds?: [string | null, string | null];
   onExit: () => void;
 }
 
@@ -43,6 +49,7 @@ export class Session {
   private exited = false;
   private tutorial: Tutorial | null = null;
   private dialogOpen = false;
+  private record: GameRecord = newRecord();
 
   constructor(private stage: HTMLElement, private opts: SessionOpts) {
     const seed = (Math.random() * 2 ** 31) | 0;
@@ -62,10 +69,14 @@ export class Session {
       this.tutorial = new Tutorial(this.root);
       this.tutorial.onFinish = () => {
         this.cpus[1].level = "normal";
+        playBgm("battle");
+        const got = finishTutorial();
+        if (got.length) void revealTrophies(this.root, got);
       };
     }
     setLayer("front");
     setSpeed(prefs.speed);
+    playBgm(tut ? "tutorial" : "battle");
   }
 
   private layout(): void {
@@ -76,6 +87,7 @@ export class Session {
         <span class="top-buttons">
           <button class="btn small" data-rules>[ ${S.rules} ]</button>
           <button class="btn small" data-speed></button>
+          <button class="btn small" data-sound></button>
           <button class="btn small" data-quit>[ ${S.menu} ]</button>
         </span>
       </div>
@@ -98,8 +110,12 @@ export class Session {
       setSpeed(prefs.speed);
       this.renderTop();
     });
+    this.root.querySelector("[data-sound]")!.addEventListener("click", () => {
+      setSound(!soundOn());
+      this.renderTop();
+    });
     this.root.querySelector("[data-quit]")!.addEventListener("click", async () => {
-      if (this.s.phase === "over" || (await confirmDialog(this.root, S.confirmQuit))) this.exit();
+      if (this.s.phase === "over" || (await confirmDialog(this.root, S.confirmQuit))) void this.exit();
     });
     this.root.querySelector(".status-body")!.addEventListener("click", (e) => {
       if ((e.target as HTMLElement).closest("[data-end]")) this.submit({ type: "endTurn", player: this.viewer });
@@ -111,9 +127,10 @@ export class Session {
     void this.loop();
   }
 
-  exit(): void {
+  async exit(): Promise<void> {
     this.exited = true;
     this.resolveInput = null;
+    await cover();
     this.root.remove();
     this.opts.onExit();
   }
@@ -151,6 +168,7 @@ export class Session {
     const who = s.phase === "setup" ? S.setup : this.turnLabel(s.current);
     t.textContent = s.phase === "setup" ? S.setup : `${fmt(S.turn, { n: s.turnNumber })} · ${who}`;
     this.root.querySelector("[data-speed]")!.textContent = `[ ${S.speed}: ${prefs.speed > 1 ? S.speedFast : S.speedNormal} ]`;
+    this.root.querySelector("[data-sound]")!.textContent = `[ ${soundOn() ? text.sound.on : text.sound.off} ]`;
   }
 
   private turnLabel(p: PlayerId): string {
@@ -202,6 +220,7 @@ export class Session {
   }
 
   toast(msg: string): void {
+    playSe("error");
     const el = document.createElement("div");
     el.className = "toast";
     el.textContent = msg;
@@ -301,7 +320,9 @@ export class Session {
       r.events,
     );
     for (const ev of r.events) delete ev.snap;
+    if (this.opts.mode !== "hotseat") track(this.record, prev, a, r.events, 0);
     this.s = r.state;
+    if (this.s.phase === "main" && this.s.players.some((p) => p.kos >= pinchKOs())) playBgm("pinch");
     this.busy = false;
     this.tutorial?.onAction(a, r.events, r.state, byHuman);
     this.render(this.s);
@@ -379,13 +400,22 @@ export class Session {
     const O = text.over;
     const w = s.winner!;
     const hot = this.opts.mode === "hotseat";
+    const win = hot || w === 0;
+    playBgm(win ? "result-win" : "result-lose");
+    playSe(win ? "win" : "lose");
+    // トロフィー（CPU 戦とチュートリアルの続きは、人 = P1 の記録として数える）
+    const got = hot ? finishHotseatGame() : finishCpuGame(this.record, s, this.opts.deckIds?.[0] ?? null);
+    await wait(900 / prefs.speed);
+    if (got.length) await revealTrophies(this.root, got);
     const title = hot ? fmt(O.pWin, { who: this.names[w] }) : w === 0 ? O.win : O.lose;
     const reason = s.endReason === "kos" ? fmt(O.byKos, { n: s.rules.winKOs }) : O.byNoUnits;
-    const choice = await gameOverScreen(this.root, title, `${esc(reason)}・${fmt(O.turns, { n: s.turnNumber })}`, hot || w === 0);
+    const choice = await gameOverScreen(this.root, title, `${esc(reason)}・${fmt(O.turns, { n: s.turnNumber })}`, win);
     if (choice === "again") {
+      await cover();
       this.root.remove();
       const next = new Session(this.stage, this.opts.mode === "tutorial" ? { ...this.opts, mode: "cpu" } : this.opts);
       next.start();
-    } else this.exit();
+      void uncover();
+    } else void this.exit();
   }
 }

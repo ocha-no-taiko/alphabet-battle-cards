@@ -223,6 +223,27 @@
     "back": "タイトルへ",
     "attrCount": "属性: {list}"
   },
+  "collection": {
+    "title": "トロフィーカード",
+    "backs": "カードの裏面",
+    "backsHelp": "クリックで切り替え（トロフィーで増える）",
+    "detail": "詳細",
+    "pick": "カードを選ぶと、手に入れる条件が出ます。手に入れたカードはクリックで回せます。",
+    "locked": "まだ手に入れていません",
+    "gotOn": "{date} に獲得",
+    "backReward": "ごほうび: カードの裏面「{name}」",
+    "backUnlocked": "カードの裏面「{name}」が使えるようになりました（コレクションで切り替え）",
+    "stats": "記録",
+    "record": "CPU 戦 {g} 回・{w} 勝 {l} 敗",
+    "streak": "連勝 {s}（最高 {b}）",
+    "kos": "撃破 {k} 回・進化 {e} 体",
+    "hotseat": "2 人対戦 {h} 回",
+    "next": "次へ",
+    "back": "タイトルへ",
+    "menu": "コレクション",
+    "count": "トロフィー {got}/{total}"
+  },
+  "sound": { "on": "音: ON", "off": "音: OFF" },
   "rules": [
     { "title": "勝ち方", "body": [
       "2 人で対戦します。相手のメインを 5 回撃破した側の勝ち。",

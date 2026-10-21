@@ -22,7 +22,6 @@ export interface ViewModel {
   hidden?: Set<number>;
 }
 
-const BACK = backArt();
 
 export function emptySlotArt(label: string): Art {
   const a = blank(CARD_W, CARD_H, "transparent");
@@ -44,14 +43,14 @@ export function visibleArt(s: GameState, id: number, viewer: PlayerId, reveal?: 
   const c = s.cards[id];
   const loc = locate(s, id);
   if (!loc) return cardArt(c);
-  if (loc.zone === "deck") return BACK;
-  if ((loc.zone === "hand" || loc.zone === "pool") && c.owner !== viewer && !reveal?.has(id)) return BACK;
+  if (loc.zone === "deck") return backArt();
+  if ((loc.zone === "hand" || loc.zone === "pool") && c.owner !== viewer && !reveal?.has(id)) return backArt();
   const zone = loc.zone === "main" || loc.zone === "sub" ? loc.zone : null;
   return cardArt(c, { zone, state: s });
 }
 
 export function isFaceVisible(s: GameState, id: number, viewer: PlayerId, reveal?: Set<number>): boolean {
-  return visibleArt(s, id, viewer, reveal) !== BACK;
+  return !visibleArt(s, id, viewer, reveal).back;
 }
 
 function cardEl(m: ViewModel, id: number, size: string, extra = ""): string {
@@ -71,7 +70,7 @@ function cardEl(m: ViewModel, id: number, size: string, extra = ""): string {
       if ((loc?.zone === "main" || loc?.zone === "sub") && !canUseSkill(s, p, id)) cls.push("usable");
     }
   }
-  if (art === BACK) cls.push("back");
+  if (art.back) cls.push("back");
   return `<pre class="${cls.join(" ")}" data-id="${id}" ${tut ? `data-tut="${tut}"` : ""} ${extra}>${artToHtml(art)}</pre>`;
 }
 
@@ -82,7 +81,7 @@ function slot(label: string, size: string): string {
 function pile(m: ViewModel, p: PlayerId, kind: "deck" | "trash", who: "me" | "opp"): string {
   const pl = m.s.players[p];
   const ids = kind === "deck" ? pl.deck : pl.trash;
-  const top = ids.length ? (kind === "deck" ? `<pre class="card s-pile back">${artToHtml(BACK)}</pre>` : cardEl(m, ids[ids.length - 1], "pile")) : slot(kind === "deck" ? "DECK" : "TRASH", "pile");
+  const top = ids.length ? (kind === "deck" ? `<pre class="card s-pile back">${artToHtml(backArt())}</pre>` : cardEl(m, ids[ids.length - 1], "pile")) : slot(kind === "deck" ? "DECK" : "TRASH", "pile");
   const label = kind === "deck" ? fmt(text.status.deckCount, { n: ids.length }) : fmt(text.status.trashCount, { n: ids.length });
   return `<div class="pile" data-pile="${kind}-${p}" data-tut="${kind}-${who}">${top}<div class="pile-label">${label}</div></div>`;
 }

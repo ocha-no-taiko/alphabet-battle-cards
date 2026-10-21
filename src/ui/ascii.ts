@@ -1,6 +1,7 @@
 // カラーアスキーアート。文字と色の 2 次元配列（Art）を作り、HTML（<pre> の span）か Canvas（Three.js のテクスチャ）に描く。
 import glyphsJson from "../data/glyphs.json" with { type: "json" };
 import theme from "../data/theme.json" with { type: "json" };
+import trophiesJson from "../data/trophies.json" with { type: "json" };
 import { ATTRS, SYMBOLS, UNITS } from "../engine/data.ts";
 import { evoThreshold, unitAtk } from "../engine/query.ts";
 import type { Card, GameState, UnitCard } from "../engine/types.ts";
@@ -13,6 +14,8 @@ export interface Art {
   ch: string[][];
   co: string[][];
   bg?: string;
+  /** カードの裏面なら true */
+  back?: boolean;
 }
 
 export const CARD_W = 15;
@@ -169,23 +172,83 @@ export function symbolArt(sym: string): Art {
   return a;
 }
 
-export function backArt(): Art {
-  const [b1, b2] = theme.back as [string, string];
+export interface BackDesign {
+  name: string;
+  chars: string[];
+  colors: string[];
+  label: string;
+}
+export const BACKS = trophiesJson.backs as Record<string, BackDesign>;
+let backId = "";
+const backCache = new Map<string, Art>();
+
+/** 裏面のデザインを切り替える（トロフィーで手に入るもの。"" は標準） */
+export function setBackDesign(id: string): void {
+  backId = BACKS[id] ? id : "";
+}
+
+export function backArt(id = backId): Art {
+  const hit = backCache.get(id);
+  if (hit) return hit;
+  const d = BACKS[id] ?? BACKS[""];
+  const [b1, b2] = d.colors;
   const a = blank(CARD_W, CARD_H, theme.cardBg);
+  a.back = true;
   frame(a, 0, 0, CARD_W, CARD_H, mix(b2, theme.cardBg, 0.3));
   for (let y = 1; y < CARD_H - 1; y++)
     for (let x = 1; x < CARD_W - 1; x++) {
       const t = (x + y) / (CARD_W + CARD_H);
-      put(a, x, y, (x + y) % 2 ? "╱" : "╲", mix(b1, b2, t));
+      put(a, x, y, d.chars[(x + y) % d.chars.length], mix(b1, b2, t));
     }
   put(a, 3, 4, "┌───────┐", b2);
   put(a, 3, 5, "│       │", b2);
   put(a, 3, 6, "│       │", b2);
   put(a, 3, 7, "└───────┘", b2);
-  put(a, 5, 5, "A", theme.attr.Diagonal[0]);
-  put(a, 7, 5, "B", theme.attr.Mixed[0]);
-  put(a, 9, 5, "C", theme.attr.Curved[0]);
+  const label = d.label.slice(0, 4);
+  const lc = [theme.attr.Diagonal[0], theme.attr.Mixed[0], theme.attr.Curved[0], theme.attr.Orthogonal[0]];
+  const x0 = label.length > 3 ? 4 : 5;
+  [...label].forEach((ch, i) => put(a, x0 + i * (label.length > 3 ? 2 : 2), 5, ch, lc[i % lc.length]));
   put(a, 4, 6, " ·····  ", theme.dim);
+  backCache.set(id, a);
+  return a;
+}
+
+// ---- トロフィーカード ----
+
+export interface TrophyDef {
+  id: string;
+  name: string;
+  en: string;
+  desc: string;
+  glyph: string;
+  rank: string;
+  back?: string;
+  cond: Record<string, unknown>;
+}
+
+export function rankColors(rank: string): [string, string] {
+  return ((trophiesJson.ranks as Record<string, { colors: string[] }>)[rank]?.colors ?? [theme.fg, theme.dim]) as [string, string];
+}
+
+export function trophyArt(t: TrophyDef, locked = false): Art {
+  const a = blank(CARD_W, CARD_H, theme.cardBg);
+  const label = (trophiesJson.ranks as Record<string, { label: string }>)[t.rank]?.label ?? "";
+  if (locked) {
+    frame(a, 0, 0, CARD_W, CARD_H, theme.faint);
+    put(a, 1, 1, label, theme.faint);
+    glyph(a, 2, 3, "@lock", theme.faint, theme.line);
+    put(a, 1, 9, "???", theme.faint);
+    put(a, 1, 10, "LOCKED", theme.faint);
+    return a;
+  }
+  const [c1, c2] = rankColors(t.rank);
+  frame(a, 0, 0, CARD_W, CARD_H, c1, true);
+  put(a, 1, 1, label, c1);
+  putRight(a, 13, 1, "TROPHY", theme.dim);
+  for (let x = 1; x < CARD_W - 1; x++) if ((x * 7) % 5 === 0) put(a, x, 2, "·", mix(c1, theme.cardBg, 0.5));
+  glyph(a, 2, 3, t.glyph, c1, c2);
+  put(a, 1, 9, t.en.slice(0, 13), theme.fg);
+  if (t.back) put(a, 1, 10, "+CARD BACK", c2);
   return a;
 }
 
@@ -234,7 +297,7 @@ export function artKey(a: Art): string {
   return a.ch.map((r) => r.join("")).join("\n") + a.co.map((r) => r.join("")).join("");
 }
 
-export const FONT_FAMILY = "'JetBrains Mono ABC', 'Menlo', monospace";
+export const FONT_FAMILY = "'JetBrains Mono ABC', 'UDEV Gothic ABC', monospace";
 
 /** Canvas に描く（Three.js のテクスチャ用）。1 文字のセルは 0.6em × 1.2em */
 export function artToCanvas(a: Art, fontPx = 26): HTMLCanvasElement {

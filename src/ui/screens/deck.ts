@@ -7,6 +7,8 @@ import { attrIcon } from "../game/view.ts";
 import { prefs, savePrefs, type CustomDeck } from "../prefs.ts";
 import { esc, fmt } from "../text.ts";
 import { fakeUnit } from "./title.ts";
+import { playBgm } from "../audio.ts";
+import { cover } from "../fx.ts";
 
 const K = text.deck;
 
@@ -32,6 +34,7 @@ export function showDeckEditor(stage: HTMLElement): Promise<void> {
   const root = document.createElement("div");
   root.className = "screen deck";
   stage.appendChild(root);
+  playBgm("deck");
   const first = prefs.decks[0];
   let editing: CustomDeck = first
     ? structuredClone(first)
@@ -126,8 +129,10 @@ export function showDeckEditor(stage: HTMLElement): Promise<void> {
         return render();
       }
       if (t.closest("[data-back]")) {
-        root.remove();
-        resolve();
+        void cover().then(() => {
+          root.remove();
+          resolve();
+        });
       }
     });
   });

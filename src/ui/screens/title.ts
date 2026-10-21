@@ -7,16 +7,20 @@ import type { DeckList, UnitCard } from "../../engine/types.ts";
 import { artToHtml, bannerArt, numberArt, symbolArt, unitArt, type Art } from "../ascii.ts";
 import { setLayer, startAmbient, stopAmbient } from "../flip3d.ts";
 import { prefs, savePrefs } from "../prefs.ts";
-import { esc } from "../text.ts";
+import { esc, fmt } from "../text.ts";
+import { playBgm, playSe, setSound, soundOn } from "../audio.ts";
+import { cover } from "../fx.ts";
+import { trophyCount } from "../trophies.ts";
 import { rulesOverlay } from "./rules.ts";
 
 const T = text.title;
 
 export type TitleChoice =
-  | { kind: "cpu"; decks: [DeckList, DeckList] }
-  | { kind: "hotseat"; decks: [DeckList, DeckList] }
+  | { kind: "cpu"; decks: [DeckList, DeckList]; deckIds: [string | null, string | null] }
+  | { kind: "hotseat"; decks: [DeckList, DeckList]; deckIds: [string | null, string | null] }
   | { kind: "tutorial" }
-  | { kind: "deck" };
+  | { kind: "deck" }
+  | { kind: "collection" };
 
 export function deckOptions(): { id: string; name: string; deck: DeckList }[] {
   const out = DECK_PRESETS.map((d) => ({ id: `preset:${d.id}`, name: d.name, deck: d as DeckList }));
@@ -24,9 +28,19 @@ export function deckOptions(): { id: string; name: string; deck: DeckList }[] {
   return out;
 }
 
-function resolveDeck(id: string): DeckList {
-  if (id === "random") return DECK_PRESETS[Math.floor(Math.random() * DECK_PRESETS.length)];
-  return deckOptions().find((d) => d.id === id)?.deck ?? DECK_PRESETS[0];
+function resolveDeck(id: string): { deck: DeckList; presetId: string | null } {
+  if (id === "random") {
+    const d = DECK_PRESETS[Math.floor(Math.random() * DECK_PRESETS.length)];
+    return { deck: d, presetId: d.id };
+  }
+  const deck = deckOptions().find((d) => d.id === id)?.deck ?? DECK_PRESETS[0];
+  return { deck, presetId: id.startsWith("preset:") ? id.slice(7) : null };
+}
+
+function pair(a: string, b: string): { decks: [DeckList, DeckList]; deckIds: [string | null, string | null] } {
+  const x = resolveDeck(a);
+  const y = resolveDeck(b);
+  return { decks: [x.deck, y.deck], deckIds: [x.presetId, y.presetId] };
 }
 
 export function fakeUnit(letter: string, evolved = false): UnitCard {
@@ -51,6 +65,8 @@ export function showTitle(stage: HTMLElement): Promise<TitleChoice> {
   stage.appendChild(root);
   setLayer("behind");
   startAmbient(ambientArts());
+  playBgm("title");
+  const tc = trophyCount();
   const logo = bannerArt("ABC", [
     theme.attr.Diagonal as [string, string],
     theme.attr.Mixed as [string, string],
@@ -70,6 +86,7 @@ export function showTitle(stage: HTMLElement): Promise<TitleChoice> {
       <button class="btn menu-item" data-go="hotseat">${T.hotseat}</button>
       <button class="btn menu-item" data-go="tutorial">${T.tutorial}</button>
       <button class="btn menu-item" data-go="deck">${T.deck}</button>
+      <button class="btn menu-item" data-go="collection">${text.collection.menu} <span class="dim small">${fmt(text.collection.count, tc)}</span></button>
       <button class="btn menu-item" data-go="rules">${T.rules}</button>
     </div>
     <div class="menu sub hidden" data-view="cpu">
@@ -84,7 +101,8 @@ export function showTitle(stage: HTMLElement): Promise<TitleChoice> {
       <button class="btn menu-item hot" data-start="hotseat">${T.start}</button>
       <button class="btn menu-item" data-back>${T.back}</button>
     </div>
-    <p class="footer dim">${T.footer}</p>`;
+    <p class="footer dim">${T.footer}</p>
+    <button class="btn small sound-toggle" data-sound>[ ${soundOn() ? text.sound.on : text.sound.off} ]</button>`;
   const view = (name: string) => {
     root.querySelectorAll<HTMLElement>(".menu").forEach((m) => m.classList.toggle("hidden", m.dataset.view !== name));
     root.querySelector<HTMLElement>(`.menu[data-view="${name}"] button`)?.focus();
@@ -102,8 +120,13 @@ export function showTitle(stage: HTMLElement): Promise<TitleChoice> {
   };
   window.addEventListener("keydown", onKey);
   return new Promise((resolve) => {
-    const done = (c: TitleChoice) => {
+    let leaving = false;
+    const done = async (c: TitleChoice) => {
+      if (leaving) return;
+      leaving = true;
       window.removeEventListener("keydown", onKey);
+      playSe("transition");
+      await cover();
       stopAmbient();
       root.remove();
       resolve(c);
@@ -112,20 +135,26 @@ export function showTitle(stage: HTMLElement): Promise<TitleChoice> {
       const t = e.target as HTMLElement;
       const go = t.closest<HTMLElement>("[data-go]")?.dataset.go;
       if (go === "cpu" || go === "hotseat") return view(go);
-      if (go === "tutorial") return done({ kind: "tutorial" });
-      if (go === "deck") return done({ kind: "deck" });
+      if (t.closest("[data-sound]")) {
+        setSound(!soundOn());
+        t.closest("[data-sound]")!.textContent = `[ ${soundOn() ? text.sound.on : text.sound.off} ]`;
+        return;
+      }
+      if (go === "tutorial") return void done({ kind: "tutorial" });
+      if (go === "deck") return void done({ kind: "deck" });
+      if (go === "collection") return void done({ kind: "collection" });
       if (go === "rules") return rulesOverlay(stage);
       if (t.closest("[data-back]")) return view("main");
       const start = t.closest<HTMLElement>("[data-start]")?.dataset.start;
       if (start === "cpu") {
         prefs.lastDeck = value("a");
         savePrefs();
-        done({ kind: "cpu", decks: [resolveDeck(value("a")), resolveDeck(value("cpu"))] });
+        void done({ kind: "cpu", ...pair(value("a"), value("cpu")) });
       } else if (start === "hotseat") {
         prefs.lastDeck = value("p1");
         prefs.lastDeck2 = value("p2");
         savePrefs();
-        done({ kind: "hotseat", decks: [resolveDeck(value("p1")), resolveDeck(value("p2"))] });
+        void done({ kind: "hotseat", ...pair(value("p1"), value("p2")) });
       }
     });
   });
