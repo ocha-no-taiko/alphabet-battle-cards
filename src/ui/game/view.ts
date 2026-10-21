@@ -4,11 +4,13 @@ import theme from "../../data/theme.json" with { type: "json" };
 import text from "../../data/text.json" with { type: "json" };
 import { ATTRS, SYMBOLS, UNITS } from "../../engine/data.ts";
 import {
-  autoDamage, canPlace, canUseSkill, canUseSymbol, evoRemaining, locate, other, skillCost, storageCap, unitCard,
+  activeEffects, autoDamage, canPlace, canUseSkill, canUseSymbol, evoRemaining, locate, other, skillCost, storageCap, sumEffect,
+  unitCard,
 } from "../../engine/query.ts";
 import type { Effect, GameState, PlayerId } from "../../engine/types.ts";
 import { artToHtml, backArt, blank, cardArt, CARD_H, CARD_W, frame, put, type Art } from "../ascii.ts";
 import { fmt } from "../text.ts";
+import { FX } from "../fx.ts";
 
 export interface ViewModel {
   s: GameState;
@@ -86,6 +88,21 @@ function pile(m: ViewModel, p: PlayerId, kind: "deck" | "trash", who: "me" | "op
   return `<div class="pile" data-pile="${kind}-${p}" data-tut="${kind}-${who}">${top}<div class="pile-label">${label}</div></div>`;
 }
 
+/**
+ * LETHAL（リーチ）: いまのターンの側の自動ダメージ（相手のガード・半減を引いたあと）で、相手のメインを倒せる見込みか。
+ * 倒される側のプレイヤーを返す（見込みがなければ null）
+ */
+export function lethalTarget(s: GameState): PlayerId | null {
+  if (s.phase !== "main" || s.pending.length || !FX.lethal) return null;
+  const p = s.current;
+  const q = other(p);
+  const target = unitCard(s, s.players[q].main);
+  if (!target) return null;
+  let d = Math.max(0, autoDamage(s, p).total - sumEffect(s, "guard", q));
+  if (activeEffects(s, "half", q).length) d = Math.ceil(d / 2);
+  return d > 0 && d >= target.unit.hp ? q : null;
+}
+
 function row(m: ViewModel, p: PlayerId, who: "me" | "opp"): string {
   const s = m.s;
   const pl = s.players[p];
@@ -99,7 +116,7 @@ function row(m: ViewModel, p: PlayerId, who: "me" | "opp"): string {
     <div class="piles">${pile(m, p, "deck", who)}${pile(m, p, "trash", who)}</div>
     <div class="storage" data-tut="storage-${who}">${storage.join("")}</div>
     <div class="subs" data-tut="subs-${who}">${subs.join("")}</div>
-    <div class="main-slot" data-tut="main-${who}" data-main="${p}">${main}</div>
+    <div class="main-slot ${lethalTarget(s) === p ? "lethal-target" : ""}" data-tut="main-${who}" data-main="${p}">${main}</div>
   </div>`;
 }
 
@@ -151,6 +168,7 @@ function infoLine(m: ViewModel, p: PlayerId, who: "me" | "opp"): string {
   const s = m.s;
   const a = autoDamage(s, p);
   const kos = s.players[p].kos;
+  const match = kos === s.rules.winKOs - 1;
   const pips = Array.from({ length: s.rules.winKOs }, (_, i) =>
     `<span style="color:${i < kos ? theme.accent2 : theme.faint}">${i < kos ? "■" : "□"}</span>`).join("");
   const extra = (a.bonus ? ` +${a.bonus}` : "") + (a.minus ? ` -${a.minus}` : "");
@@ -158,8 +176,10 @@ function infoLine(m: ViewModel, p: PlayerId, who: "me" | "opp"): string {
   const turnMark = s.phase === "main" && s.current === p ? `<span class="turn-mark">▶</span>` : `<span class="turn-mark off">·</span>`;
   const hand = who === "opp" ? `<span class="dim">${fmt(text.status.handCount, { n: s.players[p].hand.length })}</span>` : "";
   return `<div class="info ${who}">${turnMark}<span class="who">${m.names[p]}</span>
-    <span class="ko" data-tut="ko-${who}">${text.status.ko} ${pips}</span>
+    <span class="ko ${match ? "match" : ""}" data-tut="ko-${who}">${text.status.ko} ${pips}</span>
     <span class="auto" data-tut="auto-${who}" title="${tip}">${text.status.auto} <b>${a.total}</b></span>${hand}
+    ${match ? `<span class="match-chip">MATCH POINT</span>` : ""}
+    ${lethalTarget(s) === other(p) && s.current === p ? `<span class="lethal-chip">LETHAL</span>` : ""}
     <span class="chips">${chips(m, p)}</span></div>`;
 }
 

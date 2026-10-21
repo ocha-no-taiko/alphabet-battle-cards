@@ -133,7 +133,7 @@ export type GameEvent = (
   | { t: "skill"; p: PlayerId; id: number }
   | { t: "symbol"; p: PlayerId; id: number }
   | { t: "symbolDone"; p: PlayerId; id: number }
-  | { t: "damage"; p: PlayerId; id: number; amount: number; raw: number; reflected?: boolean }
+  | { t: "damage"; p: PlayerId; id: number; amount: number; raw: number; reflected?: boolean; /** 継続ダメージ・反射のときだけ */ src?: "needle" | "reflect" }
   | { t: "heal"; p: PlayerId; id: number; amount: number }
   | { t: "ko"; p: PlayerId; id: number }
   | { t: "newMain"; p: PlayerId; id: number }

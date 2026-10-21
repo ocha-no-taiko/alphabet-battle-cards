@@ -168,6 +168,7 @@
     "damage": "{who} のメイン {card} に {n} ダメージ{extra}",
     "damageReduced": "（{raw} から軽減）",
     "reflected": "（反射）",
+    "needle": "（Needle）",
     "heal": "{who} の {card} が {n} 回復",
     "ko": "{who} のメイン {card} が撃破された",
     "newMain": "{who} は {card} を新しいメインにした",

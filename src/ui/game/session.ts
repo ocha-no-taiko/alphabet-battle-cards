@@ -14,7 +14,7 @@ import {
   chooseMainDialog, confirmDialog, gameOverScreen, listDialog, passScreen, setupDialog, skillDialog, symbolDialog,
 } from "./dialogs.ts";
 import { logLine } from "./log.ts";
-import { detailHtml, renderBoard } from "./view.ts";
+import { detailHtml, lethalTarget, renderBoard } from "./view.ts";
 import { rulesOverlay } from "../screens/rules.ts";
 import { prefs, savePrefs } from "../prefs.ts";
 import { pinchKOs, playBgm, playSe, setSound, soundOn } from "../audio.ts";
@@ -50,6 +50,8 @@ export class Session {
   private tutorial: Tutorial | null = null;
   private dialogOpen = false;
   private record: GameRecord = newRecord();
+  private animFx = { combo: 0 };
+  private lethalTurn = -1;
 
   constructor(private stage: HTMLElement, private opts: SessionOpts) {
     const seed = (Math.random() * 2 ** 31) | 0;
@@ -186,12 +188,18 @@ export class Session {
     const mine = s.current === this.viewer;
     const canEnd = mine && !!this.resolveInput && !this.busy && !s.pending.length && s.phase === "main";
     const pend = s.pending[0];
+    // 自分のターンに、ターンを終えれば自動ダメージで倒せる見込みなら LETHAL（1 ターンに 1 回だけ音を鳴らす）
+    const lethal = mine && lethalTarget(s) === other(this.viewer);
+    if (lethal && this.lethalTurn !== s.turnNumber) {
+      this.lethalTurn = s.turnNumber;
+      playSe("lethal");
+    }
     const counter = (label: string, used: number, max: number) =>
       `<span class="counter ${used >= max ? "spent" : ""}">${label} <b>${used}</b>/${max}</span>`;
     el.innerHTML = `
       <div class="who-big" style="color:${s.current === 0 ? theme.accent : theme.accent2}">${pend ? fmt(S.waitChoose, { who: this.names[pend.player] }) : this.turnLabel(s.current)}</div>
       <div class="counters">${counter(S.number, t.numbersPlaced, t.numbersAllowed)}${counter(S.skill, t.skillsUsed, t.skillsAllowed)}${counter(S.symbol, t.symbolsUsed, t.symbolsAllowed)}</div>
-      <button class="btn end ${canEnd ? "hot" : ""}" data-end data-tut="end-turn" ${canEnd ? "" : "disabled"}>[ ${S.endTurn} ]</button>
+      <button class="btn end ${canEnd ? "hot" : ""} ${lethal ? "lethal" : ""}" data-end data-tut="end-turn" ${canEnd ? "" : "disabled"}>[ ${S.endTurn}${lethal ? " ▶ LETHAL" : ""} ]</button>
       <p class="hint dim">${S.hint}</p>`;
   }
 
@@ -315,12 +323,13 @@ export class Session {
         speed: prefs.speed,
         render: (s, hidden) => this.render(s, hidden),
         onEvents: (evs, s) => this.log(evs, s),
+        fx: this.animFx,
       },
       prev,
       r.events,
     );
     for (const ev of r.events) delete ev.snap;
-    if (this.opts.mode !== "hotseat") track(this.record, prev, a, r.events, 0);
+    if (this.opts.mode !== "hotseat") track(this.record, prev, a, r.events, 0, r.state);
     this.s = r.state;
     if (this.s.phase === "main" && this.s.players.some((p) => p.kos >= pinchKOs())) playBgm("pinch");
     this.busy = false;

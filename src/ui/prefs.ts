@@ -20,6 +20,9 @@ export interface Progress {
   hotseatGames: number;
   tutorialDone: boolean;
   deckWins: Record<string, number>;
+  /** 通算で使った技の文字・記号（トロフィー「A to Z」「記号マスター」用） */
+  lettersUsed: string[];
+  symbolsUsed: string[];
   /** 手に入れたトロフィー（id → 日時） */
   trophies: Record<string, string>;
 }
@@ -42,7 +45,7 @@ export const prefs: {
   cardBack: "",
   progress: {
     games: 0, wins: 0, losses: 0, streak: 0, bestStreak: 0, kos: 0, evolutions: 0, hotseatGames: 0,
-    tutorialDone: false, deckWins: {}, trophies: {},
+    tutorialDone: false, deckWins: {}, trophies: {}, lettersUsed: [], symbolsUsed: [],
   },
 };
 

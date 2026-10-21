@@ -18,6 +18,22 @@
     { "id": "kos-50", "name": "撃破王", "en": "KO KING", "desc": "通算 50 回撃破する", "cond": { "stat": "kos", "min": 50 }, "glyph": "@skull", "rank": "gold", "back": "blood" },
     { "id": "all-decks", "name": "全デック制覇", "en": "ALL DECKS", "desc": "プリセット 5 種類すべてで CPU に勝つ", "cond": { "stat": "deckWins" }, "glyph": "*", "rank": "gold", "back": "matrix" },
     { "id": "wins-20", "name": "アルファベット王", "en": "ABC KING", "desc": "CPU に通算 20 勝", "cond": { "stat": "wins", "min": 20 }, "glyph": "@crown", "rank": "gold", "back": "royal" },
+    { "id": "symbol-ko", "name": "記号でトドメ", "en": "SYMBOL KO", "desc": "記号カードで相手のメインを撃破する", "cond": { "game": "symbolKO" }, "glyph": "%", "rank": "bronze" },
+    { "id": "revive", "name": "よみがえり", "en": "UNDO", "desc": "トラッシュのユニットを場に戻す（Undo）", "cond": { "game": "revive", "min": 1 }, "glyph": "U", "rank": "bronze" },
+    { "id": "zorome", "name": "ゾロ目", "en": "ZOROME", "desc": "ストレージに同じ数字を 3 枚そろえる", "cond": { "game": "zorome", "min": 3 }, "glyph": "=", "rank": "bronze" },
+    { "id": "symbols-3", "name": "記号の嵐", "en": "3 SYMBOLS", "desc": "1 ターンに記号カードを 3 枚使う", "cond": { "game": "turnSymbols", "min": 3 }, "glyph": ";", "rank": "bronze" },
+    { "id": "losses-7", "name": "七転び八起き", "en": "NEVER GIVE UP", "desc": "CPU に通算 7 回負ける", "cond": { "stat": "losses", "min": 7 }, "glyph": "~", "rank": "bronze" },
+    { "id": "needle-ko", "name": "時間差の一刺し", "en": "NEEDLE KO", "desc": "Needle の継続ダメージで撃破する", "cond": { "game": "needleKO" }, "glyph": "N", "rank": "silver" },
+    { "id": "reflect-ko", "name": "倍返し", "en": "REFLECT KO", "desc": "Reflect の反射ダメージで撃破する", "cond": { "game": "reflectKO" }, "glyph": "R", "rank": "silver" },
+    { "id": "jackpot-9", "name": "大当たり", "en": "JACKPOT 9", "desc": "Gamble で 9 を引き当てる", "cond": { "game": "gambleNine" }, "glyph": "9", "rank": "silver" },
+    { "id": "turn-60", "name": "猛攻", "en": "60 DAMAGE", "desc": "1 ターンに相手のメインへ合計 60 以上のダメージ", "cond": { "game": "turnDamage", "min": 60 }, "glyph": "@bolt", "rank": "silver" },
+    { "id": "one-shot", "name": "一撃必殺", "en": "ONE SHOT", "desc": "HP 満タンの相手のメインを 1 回のダメージで撃破する", "cond": { "game": "oneShot" }, "glyph": "X", "rank": "silver" },
+    { "id": "all-attrs", "name": "四属性", "en": "4 ATTRIBUTES", "desc": "場（メインとサブ）に 4 つの属性をそろえる", "cond": { "game": "allAttrs" }, "glyph": "@diamond", "rank": "silver" },
+    { "id": "last-stand", "name": "土俵際", "en": "LAST STAND", "desc": "メインの HP が 5 以下のまま CPU に勝つ", "cond": { "game": "lowHpWin", "max": 5 }, "glyph": "@heart", "rank": "silver" },
+    { "id": "double-ko", "name": "ダブル撃破", "en": "DOUBLE KO", "desc": "自分の 1 ターンに 2 体を撃破する", "cond": { "game": "turnKOs", "min": 2 }, "glyph": "2", "rank": "gold" },
+    { "id": "straight", "name": "ストレート", "en": "STRAIGHT", "desc": "ストレージに 5 枚の連続した数字を並べる（例: 3 4 5 6 7）", "cond": { "game": "straight" }, "glyph": "7", "rank": "gold", "back": "jackpot" },
+    { "id": "all-letters", "name": "A to Z", "en": "A TO Z", "desc": "26 文字すべての技を、通算で 1 回ずつ使う", "cond": { "stat": "lettersUsed", "min": 26 }, "glyph": "A", "rank": "gold", "back": "alphabet" },
+    { "id": "all-symbols", "name": "記号マスター", "en": "ALL SYMBOLS", "desc": "28 種類すべての記号を、通算で 1 回ずつ使う", "cond": { "stat": "symbolsUsed", "min": 28 }, "glyph": "#", "rank": "gold" },
     { "id": "complete", "name": "コンプリート", "en": "COMPLETE", "desc": "ほかのトロフィーをすべて集める", "cond": { "stat": "allTrophies" }, "glyph": "@crown", "rank": "platinum", "back": "platinum" }
   ],
   "ranks": {
@@ -34,6 +50,8 @@
     "blood": { "name": "ブラッド", "chars": ["x", "+"], "colors": ["#5a0010", "#ff3b5c"], "label": "K.O" },
     "matrix": { "name": "マトリクス", "chars": ["0", "1"], "colors": ["#0a3d1a", "#5dff8f"], "label": "ABC" },
     "royal": { "name": "ロイヤル", "chars": ["◆", "◇"], "colors": ["#4b1f7a", "#ffd84a"], "label": "KING" },
+    "jackpot": { "name": "ジャックポット", "chars": ["7", "$"], "colors": ["#7a0010", "#ffd84a"], "label": "777" },
+    "alphabet": { "name": "アルファベット", "chars": ["A", "Z"], "colors": ["#1f2a6b", "#ff4f9a"], "label": "A-Z" },
     "platinum": { "name": "プラチナ", "chars": ["▓", "░"], "colors": ["#c6fbff", "#ff7ae0"], "label": "ALL" }
   }
 }

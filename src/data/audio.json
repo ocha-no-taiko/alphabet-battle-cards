@@ -35,6 +35,12 @@
     "turn": "turn",
     "coin": "coin",
     "trophy": "trophy",
+    "roulette": "roulette",
+    "combo": "combo",
+    "critical": "critical",
+    "match-point": "match-point",
+    "wild": "wild",
+    "lethal": "lethal",
     "win": "win",
     "lose": "lose"
   }

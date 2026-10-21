@@ -197,6 +197,11 @@ export interface FlyOpts {
   hold?: number;
   tint?: number;
   onLand?: () => void;
+  /**
+   * 手前に浮かせても画面上の位置がずれないようにする（遠近でカードが外側へ流れるのを打ち消す）。
+   * 浮かせたぶんは、その場で大きくなって見える（ズーム）
+   */
+  anchor?: boolean;
 }
 
 /** カードを from から to へ飛ばす。終わったら resolve */
@@ -224,7 +229,8 @@ export function fly(o: FlyOpts): Promise<void> {
     const pa = toWorld(a);
     const pb = toWorld(b);
     const e = ease(k);
-    group.position.set(pa.x + (pb.x - pa.x) * e, pa.y + (pb.y - pa.y) * e, z);
+    const keep = o.anchor ? (camera.position.z - z) / camera.position.z : 1;
+    group.position.set((pa.x + (pb.x - pa.x) * e) * keep, (pa.y + (pb.y - pa.y) * e) * keep, z);
     group.scale.set(a.w + (b.w - a.w) * e, a.h + (b.h - a.h) * e, 1);
     group.rotation.y = rotY;
     shadow.position.set(group.position.x + z * 0.12, group.position.y - z * 0.18, -2);
@@ -269,8 +275,9 @@ export function fly(o: FlyOpts): Promise<void> {
 }
 
 /** その場で裏返す（進化など） */
+/** その場で正面に浮き上がって（ズームして）裏返る */
 export function flipInPlace(r: Rect, startArt: Art, endArt: Art, opts: { flips?: number; duration?: number; lift?: number } = {}): Promise<void> {
-  return fly({ from: r, to: r, startArt, endArt, flips: opts.flips ?? 1, duration: opts.duration ?? 700, lift: opts.lift ?? 160 });
+  return fly({ from: r, to: r, startArt, endArt, flips: opts.flips ?? 1, duration: opts.duration ?? 700, lift: opts.lift ?? 160, anchor: true });
 }
 
 /** タイトル画面の背景で、ゆっくり回るカード */

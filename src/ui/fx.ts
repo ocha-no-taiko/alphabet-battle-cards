@@ -93,6 +93,42 @@ export function hitBlink(el: Element | null, color = theme.danger): void {
   );
 }
 
+/** 画面を一瞬だけ寄せる（CRITICAL のとき） */
+export function zoomPunch(el: HTMLElement | null, scale = FX.crit.zoom): void {
+  if (!el?.animate) return;
+  el.animate(
+    [{ transform: "scale(1)" }, { transform: `scale(${scale})`, offset: 0.25 }, { transform: "scale(1)" }],
+    { duration: 420 / sp(), easing: "cubic-bezier(.2,.9,.3,1)" },
+  );
+}
+
+/** 勝ったときに、上から文字の紙吹雪を降らせる */
+export function confetti(count = FX.confetti.count, ms = FX.confetti.ms): void {
+  const colors = [theme.attr.Diagonal[0], theme.attr.Mixed[0], theme.attr.Curved[0], theme.attr.Orthogonal[0], theme.gold, theme.fg];
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789*+%!?&$#@";
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("span");
+    el.className = "fx-spark";
+    el.textContent = chars[Math.floor(Math.random() * chars.length)];
+    el.style.color = colors[i % colors.length];
+    el.style.left = `${Math.random() * window.innerWidth}px`;
+    el.style.top = `-30px`;
+    el.style.fontSize = `${14 + Math.random() * 22}px`;
+    document.body.appendChild(el);
+    const drift = (Math.random() * 2 - 1) * 160;
+    const dur = (ms * (0.55 + Math.random() * 0.6)) / sp();
+    const anim = el.animate(
+      [
+        { transform: "translate(0, 0) rotate(0deg)", opacity: 1 },
+        { transform: `translate(${drift * 0.5}px, ${window.innerHeight * 0.5}px) rotate(${Math.random() * 360}deg)`, opacity: 1, offset: 0.5 },
+        { transform: `translate(${drift}px, ${window.innerHeight + 60}px) rotate(${Math.random() * 720}deg)`, opacity: 0.2 },
+      ],
+      { duration: dur, delay: (Math.random() * ms * 0.45) / sp(), easing: "cubic-bezier(.3,.1,.7,1)", fill: "backwards" },
+    );
+    anim.onfinish = () => el.remove();
+  }
+}
+
 // ---- 画面切り替え（アスキーのワイプ） ----
 // 見た目: 画面いっぱいの文字がチラチラ変わり続け、文字はその場のまま境目だけが横に動く。
 // 軽くするしくみ:

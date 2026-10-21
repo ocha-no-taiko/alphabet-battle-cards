@@ -7,9 +7,8 @@ import { locate, type Zone } from "../../engine/query.ts";
 import type { GameEvent, GameState, PlayerId } from "../../engine/types.ts";
 import { artKey, artToHtml, backArt, bannerArt, labelArt } from "../ascii.ts";
 import { flipInPlace, fly, rectOf, type Rect } from "../flip3d.ts";
-import { fmt } from "../text.ts";
 import { playSe } from "../audio.ts";
-import { centerOf, flash, FX, hitBlink, lunge, shake as shakeScreen, sparks } from "../fx.ts";
+import { centerOf, confetti, flash, FX, hitBlink, lunge, shake as shakeScreen, sparks, zoomPunch } from "../fx.ts";
 import { visibleArt } from "./view.ts";
 
 export interface AnimHost {
@@ -19,6 +18,26 @@ export interface AnimHost {
   speed: number;
   render: (s: GameState, hidden: Set<number>) => void;
   onEvents: (evs: GameEvent[], s: GameState) => void;
+  /** 対戦をまたいで持つ演出の状態（1 ターンのヒット数） */
+  fx: { combo: number };
+}
+
+/** 看板に出す英字の名前（あなた → YOU） */
+function asciiName(names: [string, string], p: PlayerId): string {
+  const n = names[p];
+  return n === text.names.you ? "YOU" : n === text.names.cpu ? "CPU" : n;
+}
+
+const RAINBOW: [string, string][] = [
+  theme.attr.Diagonal as [string, string],
+  theme.attr.Mixed as [string, string],
+  theme.attr.Curved as [string, string],
+  theme.attr.Orthogonal as [string, string],
+];
+const RED: [string, string][] = [[theme.accent2, theme.danger], [theme.danger, theme.attr.Diagonal[1]]];
+
+function asciiBand(word: string, colors: [string, string][], sub = ""): string {
+  return `<div class="ascii-band">${artBanner(word, colors)}${sub ? `<small>${sub}</small>` : ""}</div>`;
 }
 
 const MERGE = new Set(["draw", "reshuffle", "deckEmpty", "effect", "toHand", "trashed"]);
@@ -97,6 +116,22 @@ export function banner(board: HTMLElement, html: string, cls: string, speed: num
   return wait(ms / speed).then(() => el.remove());
 }
 
+/** 「3 HIT!」の表示。回数が増えるほど大きく、色が派手になる */
+function comboPopup(board: HTMLElement, n: number, speed: number): void {
+  document.querySelectorAll(".combo-pop").forEach((e) => e.remove());
+  const b = rectOf(board);
+  const el = document.createElement("div");
+  el.className = `combo-pop c${Math.min(n, 6)}`;
+  el.innerHTML = `<b>${n}</b> HIT${n >= 4 ? "!!" : "!"}`;
+  el.style.left = `${b.x + b.w * 0.86}px`;
+  el.style.top = `${b.y + b.h * 0.47}px`;
+  el.style.fontSize = `${Math.round((22 + Math.min(n, 6) * 6) * (b.w / 1200))}px`;
+  el.style.animationDuration = `${1200 / speed}ms`;
+  document.body.appendChild(el);
+  playSe("combo");
+  setTimeout(() => el.remove(), 1250 / speed);
+}
+
 function artBanner(textStr: string, colors: [string, string][]): string {
   return `<pre>${artToHtml(bannerArt(textStr, colors))}</pre>`;
 }
@@ -146,6 +181,8 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
     };
     const cardEl = (id: number) => board.querySelector(`.card[data-id="${id}"]`);
     if (g.some((e) => e.t === "draw")) playSe("draw");
+    // 自分が 0（ワイルド）を引いたら金色に光らせる
+    const wild = g.find((e) => e.t === "draw" && e.p === host.viewer && !e.toSub && (snap.cards[e.id] as { value?: number }).value === 0);
     let k = 0;
     const limit = 14;
     for (const id of moved) {
@@ -210,6 +247,18 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
           if (c) sparks(c, [theme.danger, theme.gold, theme.fg], tier.sparks, tier.power * scale);
           playSe(ev.amount >= 25 ? "damage-big" : "damage");
           jobs.push(wait(FX.hitStopMs / sp));
+          // 1 ターンのヒット数（攻めている側から見て、相手のメインに入った回数）
+          if (ev.p !== snap.current) {
+            host.fx.combo++;
+            if (host.fx.combo >= FX.combo.min) comboPopup(board, host.fx.combo, sp);
+          }
+          if (ev.amount >= FX.crit.min) {
+            zoomPunch(screen);
+            flash(theme.gold, 0.35, 380);
+            jobs.push(banner(board, asciiBand("CRITICAL", [[theme.gold, theme.danger], [theme.fg, theme.gold]]), "crit ascii", sp, 900));
+            jobs.push(wait(FX.crit.freezeMs / sp));
+            playSe("critical");
+          }
           break;
         }
         case "heal": {
@@ -256,6 +305,7 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
         case "gameOver":
           flash("#ffffff", FX.gameOver.flash, FX.gameOver.flashMs);
           shakeScreen(screen, FX.gameOver.shake * scale);
+          if (ev.winner === host.viewer || host.names[0] !== text.names.you) confetti();
           break;
         case "pay": {
           playSe("pay");
@@ -291,12 +341,25 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
           const c = r ? { x: r.x + r.w / 2, y: r.y + r.h / 2 } : centerOf(board.querySelector(`[data-main="${ev.p}"]`));
           if (c) sparks(c, [theme.fg, theme.danger, theme.gold, theme.accent2], FX.ko.sparks, FX.ko.power * scale);
           playSe("ko");
+          // あと 1 撃破で決着
+          const scorer = (1 - ev.p) as PlayerId;
+          if (snap.phase !== "over" && snap.players[scorer].kos === snap.rules.winKOs - 1) {
+            jobs.push(
+              wait(1150 / sp).then(() => {
+                playSe("match-point");
+                flash(scorer === host.viewer ? theme.accent : theme.danger, 0.4, 600);
+                return banner(board, asciiBand("MATCH POINT", scorer === host.viewer ? RAINBOW : RED, `${asciiName(host.names, scorer)} : ${snap.players[scorer].kos} K.O.`), "match ascii", sp, 1500);
+              }),
+            );
+          }
           break;
         }
         case "turn": {
-          const mine = host.names[ev.p];
-          const label = host.names[0] === text.names.you ? (ev.p === 0 ? text.banner.yourTurn : text.banner.cpuTurn) : fmt(text.banner.pTurn, { who: mine });
-          jobs.push(banner(board, `<div class="turn-banner">${label}<small>TURN ${ev.n}</small></div>`, "turn", sp, 900));
+          host.fx.combo = 0;
+          const vsCpu = host.names[0] === text.names.you;
+          const word = vsCpu ? (ev.p === 0 ? "YOUR TURN" : "CPU TURN") : `${asciiName(host.names, ev.p)} TURN`;
+          const mine = ev.p === host.viewer || !vsCpu;
+          jobs.push(banner(board, asciiBand(word, mine ? RAINBOW : RED, `TURN ${ev.n}`), "turn ascii", sp, 1000));
           playSe("turn");
           break;
         }
@@ -306,10 +369,19 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
           playSe("coin");
           const art = (p: PlayerId) => labelArt(names[p] === text.names.you ? "1" : names[p] === text.names.cpu ? "C" : String(p + 1), names[p], p === 0 ? theme.accent : theme.accent2);
           await fly({ from: c, to: c, startArt: art((1 - ev.p) as PlayerId), endArt: art(ev.p), flips: 7, duration: 1500, lift: 260 });
-          await banner(board, `<div class="turn-banner">${fmt(text.banner.first, { who: names[ev.p] })}</div>`, "turn", sp, 1000);
+          await banner(board, asciiBand(`${asciiName(names, ev.p)} FIRST`, RAINBOW), "turn ascii", sp, 1100);
           break;
         }
       }
+    }
+    if (wild && wild.t === "draw") {
+      const r = after.get(wild.id);
+      if (r) {
+        popup(r, "WILD!", "wild", scale * 1.3, sp);
+        sparks({ x: r.x + r.w / 2, y: r.y + r.h / 2 }, [theme.gold, theme.zero[1], theme.fg], 26, 1.1 * scale);
+      }
+      flash(theme.gold, 0.25, 420);
+      playSe("wild");
     }
     await Promise.all(jobs);
     board.querySelectorAll(".pulse").forEach((el) => el.classList.remove("pulse"));

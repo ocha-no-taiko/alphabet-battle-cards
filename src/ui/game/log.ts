@@ -36,7 +36,7 @@ export function logLine(ev: GameEvent, s: GameState, viewer: PlayerId, names: [s
     case "symbol": return fmt(L.symbol, { who: who(ev.p), card: name(ev.id) });
     case "symbolDone": return null;
     case "damage": {
-      const extra = (ev.reflected ? L.reflected : "") + (ev.raw !== ev.amount ? fmt(L.damageReduced, { raw: ev.raw }) : "");
+      const extra = (ev.src === "reflect" ? L.reflected : ev.src === "needle" ? L.needle : "") + (ev.raw !== ev.amount ? fmt(L.damageReduced, { raw: ev.raw }) : "");
       return fmt(L.damage, { who: who(ev.p), card: name(ev.id), n: ev.amount, extra });
     }
     case "heal": return fmt(L.heal, { who: who(ev.p), card: name(ev.id), n: ev.amount });

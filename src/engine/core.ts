@@ -108,7 +108,7 @@ export function addEffect(cx: Ctx, e: Effect): void {
 }
 
 /** ダメージ。ガードで減らし（0 未満にしない）、そのあと「半分」（切り上げ）。反射はそのあと */
-export function dealDamage(cx: Ctx, target: PlayerId, raw: number, reflectable = true): number {
+export function dealDamage(cx: Ctx, target: PlayerId, raw: number, reflectable = true, src?: "needle" | "reflect"): number {
   const s = cx.s;
   if (s.phase === "over") return 0;
   const u = unitCard(s, s.players[target].main);
@@ -117,12 +117,12 @@ export function dealDamage(cx: Ctx, target: PlayerId, raw: number, reflectable =
   let d = Math.max(0, raw - guard);
   if (activeEffects(s, "half", target).length) d = Math.ceil(d / 2);
   u.unit.hp -= d;
-  emit(cx, { t: "damage", p: target, id: u.id, amount: d, raw, reflected: !reflectable });
+  emit(cx, { t: "damage", p: target, id: u.id, amount: d, raw, reflected: src === "reflect", src });
   checkKO(cx, target);
   if (reflectable && d > 0) {
     for (const r of activeEffects(s, "reflect", target)) {
       const back = Math.ceil(d * r.value - 1e-9);
-      if (back > 0) dealDamage(cx, other(target), back, false);
+      if (back > 0) dealDamage(cx, other(target), back, false, "reflect");
     }
   }
   return d;
@@ -220,7 +220,7 @@ function runStep(cx: Ctx, step: Step): void {
     case "needle": {
       for (const e of s.effects.filter((x) => x.kind === "needle" && x.on === p)) {
         if (s.phase === "over") return;
-        dealDamage(cx, p, e.value, false);
+        dealDamage(cx, p, e.value, false, "needle");
       }
       return;
     }

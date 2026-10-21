@@ -5,7 +5,7 @@ import trophiesJson from "../../data/trophies.json" with { type: "json" };
 import { artToHtml, BACKS, backArt, rankColors, setBackDesign, trophyArt, type TrophyDef } from "../ascii.ts";
 import { playBgm, playSe } from "../audio.ts";
 import { cover, flash, sparks, uncover } from "../fx.ts";
-import { flipInPlace, fly, rectOf } from "../flip3d.ts";
+import { flipInPlace, rectOf } from "../flip3d.ts";
 import { openModal } from "../game/dialogs.ts";
 import { prefs, savePrefs } from "../prefs.ts";
 import { esc, fmt } from "../text.ts";
@@ -24,19 +24,31 @@ export async function revealTrophies(host: HTMLElement, list: TrophyDef[]): Prom
     const m = openModal(host, "trophy-dlg");
     const [c1, c2] = rankColors(t.rank);
     const backName = t.back ? BACKS[t.back]?.name : "";
-    m.el.innerHTML = `<div class="trophy-head" style="color:${c1}">TROPHY GET!</div>
-      <pre class="card s-trophy holo" style="visibility:hidden">${artToHtml(trophyArt(t))}</pre>
+    m.el.innerHTML = `<div class="trophy-head" style="color:${c1};visibility:hidden">TROPHY GET!</div>
+      <pre class="card s-trophy roulette">${artToHtml(backArt())}</pre>
       <h2 style="color:${c1}">${esc(t.name)} <span class="dim">${rankLabel(t.rank)}</span></h2>
       <p>${esc(t.desc)}</p>
       ${backName ? `<p class="ok">${fmt(C.backUnlocked, { name: esc(backName) })}</p>` : ""}
       <div class="dlg-buttons center"><button class="btn hot" data-go disabled>[ ${C.next} ]</button></div>`;
     await nextFrame();
     const el = m.el.querySelector<HTMLElement>(".card")!;
+    // スロットのように、いろいろなトロフィーが高速で入れ替わり、だんだん遅くなって止まる
+    const pool = TROPHIES.filter((x) => x.id !== t.id);
+    for (let delay = 45; delay < 300; delay *= 1.13) {
+      const r = pool[Math.floor(Math.random() * pool.length)];
+      el.innerHTML = artToHtml(Math.random() < 0.3 ? backArt() : trophyArt(r, Math.random() < 0.4));
+      playSe("roulette", 0.5);
+      await new Promise((res) => setTimeout(res, delay));
+    }
+    el.classList.remove("roulette");
+    el.classList.add("holo");
+    el.innerHTML = artToHtml(trophyArt(t));
+    el.style.visibility = "hidden";
     const to = rectOf(el);
-    const from = { x: to.x + to.w / 2 - to.w * 0.2, y: window.innerHeight + 40, w: to.w * 0.4, h: to.h * 0.4 };
     playSe("trophy");
-    await fly({ from, to, startArt: backArt(), endArt: trophyArt(t), flips: 5, duration: 1500, lift: 320 });
+    await flipInPlace(to, backArt(), trophyArt(t), { flips: 3, duration: 900, lift: 240 });
     el.style.visibility = "";
+    m.el.querySelector<HTMLElement>(".trophy-head")!.style.visibility = "";
     flash(c1, 0.55, 800);
     sparks({ x: to.x + to.w / 2, y: to.y + to.h / 2 }, [c1, c2, theme.fg], 60, 2);
     const btn = m.el.querySelector<HTMLButtonElement>("[data-go]")!;
@@ -59,7 +71,7 @@ export function showCollection(stage: HTMLElement): Promise<void> {
     const cards = TROPHIES.map((t) => {
       const own = hasTrophy(t.id);
       return `<div class="trophy-item ${own ? "own" : "locked"} ${selected === t.id ? "sel" : ""}" data-t="${t.id}">
-        <pre class="card s-pool ${own ? "holo" : ""}">${artToHtml(trophyArt(t, !own))}</pre>
+        <pre class="card s-coll ${own ? "holo" : ""}">${artToHtml(trophyArt(t, !own))}</pre>
         <div class="trophy-name">${own ? esc(t.name) : "？？？"}</div></div>`;
     }).join("");
     const sel = TROPHIES.find((t) => t.id === selected);
@@ -114,7 +126,7 @@ export function showCollection(stage: HTMLElement): Promise<void> {
           const el = root.querySelector<HTMLElement>(`.trophy-item[data-t="${tr.id}"] .card`)!;
           el.style.visibility = "hidden";
           playSe("flip");
-          await flipInPlace(rectOf(el), backArt(), trophyArt(tr), { flips: 3, duration: 900, lift: 260 });
+          await flipInPlace(rectOf(el), backArt(), trophyArt(tr), { flips: 3, duration: 900, lift: 220 });
           el.style.visibility = "";
           const r = rectOf(el);
           sparks({ x: r.x + r.w / 2, y: r.y + r.h / 2 }, [...rankColors(tr.rank), theme.fg], 24, 1);
