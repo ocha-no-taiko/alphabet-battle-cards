@@ -311,6 +311,7 @@ button, input, select { font-family: var(--mono); font-feature-settings: "liga" 
 /* ---- タイトル ---- */
 .title { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
 .logo-art { font-size: 26px; line-height: 1.2; margin: 0; filter: drop-shadow(0 0 22px rgba(255, 79, 154, 0.35)); }
+.full-name { margin: 4px 0 0; font-size: 20px; font-weight: 700; letter-spacing: 10px; color: var(--fg); text-shadow: 0 0 14px rgba(0, 240, 200, 0.35); }
 .tagline { color: var(--dim); letter-spacing: 4px; margin: 0 0 30px; }
 .menu { display: flex; flex-direction: column; gap: 10px; width: 420px; background: rgba(6, 6, 10, 0.8); padding: 18px; border: 1px solid var(--line); }
 .menu-item { font-size: 18px; padding: 12px; text-align: left; }
@@ -375,7 +376,7 @@ button, input, select { font-family: var(--mono); font-feature-settings: "liga" 
   100% { transform: none; }
 }
 @keyframes logoGlow { 50% { filter: drop-shadow(0 0 30px rgba(0, 240, 200, 0.45)) brightness(1.15); } }
-.title .tagline { animation: fadeUp 0.6s ease 0.5s both; }
+.title .tagline, .title .full-name { animation: fadeUp 0.6s ease 0.5s both; }
 .title .menu:not(.hidden) .menu-item, .title .menu:not(.hidden) label { animation: slideIn 0.45s cubic-bezier(.2,.8,.2,1) both; }
 .title .menu > :nth-child(1) { animation-delay: 0.55s !important; }
 .title .menu > :nth-child(2) { animation-delay: 0.62s !important; }

@@ -1,6 +1,7 @@
 {
   "_comment": "画面の文言。{x} は差し込み。用語: デック（山札）・ハンド（手札）・トラッシュ・ストレージ・メイン・サブ。",
   "title": {
+    "fullName": "ALPHABET BATTLE CARDS",
     "tagline": "アルファベットで戦う、2人用カードゲーム",
     "vsCpu": "CPU と対戦",
     "hotseat": "2人で対戦（同じ画面）",
@@ -250,10 +251,10 @@
     "_comment": "結果を X で共有する文面。url は X の投稿画面（文面を入れた状態で開くだけで、投稿は本人が押す）",
     "button": "X で共有",
     "url": "https://x.com/intent/post",
-    "hashtags": "ABCカードゲーム",
-    "win": "ABC で {opp} に勝ちました！\nデック「{deck}」（{units}）\n撃破 {kos} - {lost}・{turns} ターン",
-    "lose": "ABC で {opp} に負けました…\nデック「{deck}」（{units}）\n撃破 {kos} - {lost}・{turns} ターン",
-    "hotseat": "ABC の 2 人対戦で {winner} が勝ちました！\n{p1}「{deck1}」 vs {p2}「{deck2}」\n撃破 {kos1} - {kos2}・{turns} ターン",
+    "hashtags": "AlphabetBattleCards",
+    "win": "Alphabet Battle Cards（ABC）で {opp} に勝ちました！\nデック「{deck}」（{units}）\n撃破 {kos} - {lost}・{turns} ターン",
+    "lose": "Alphabet Battle Cards（ABC）で {opp} に負けました…\nデック「{deck}」（{units}）\n撃破 {kos} - {lost}・{turns} ターン",
+    "hotseat": "Alphabet Battle Cards（ABC）の 2 人対戦で {winner} が勝ちました！\n{p1}「{deck1}」 vs {p2}「{deck2}」\n撃破 {kos1} - {kos2}・{turns} ターン",
     "tutorialDeck": "チュートリアル",
     "customDeck": "マイデック"
   },

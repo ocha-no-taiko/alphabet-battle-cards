@@ -1,0 +1,13 @@
+{
+  "name": "abc-promo",
+  "private": true,
+  "type": "module",
+  "description": "ゲームクリエイター甲子園 2026 用のサムネイル・紹介動画を、実際のゲーム画面から撮る",
+  "scripts": {
+    "thumbs": "node thumbs.mjs",
+    "video": "node video.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "25.12.0"
+  }
+}

@@ -5,3 +5,5 @@ dist/
 .cache/
 # 廻想体は再配布できないので入れない（npm run font:kaiso で取得）
 public/fonts/Kaisotai-*
+promo/node_modules/
+promo/out/

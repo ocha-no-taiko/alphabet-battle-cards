@@ -81,6 +81,7 @@ export function showTitle(stage: HTMLElement): Promise<TitleChoice> {
   const lastB = deckOptions().some((d) => d.id === prefs.lastDeck2) ? prefs.lastDeck2 : "preset:diagonal";
   root.innerHTML = `
     <div class="logo-wrap"><pre class="logo-art" title="click!">${artToHtml(logo)}</pre></div>
+    <p class="full-name">${T.fullName}</p>
     <p class="tagline">${T.tagline}</p>
     <div class="menu" data-view="main">
       <button class="btn menu-item" data-go="cpu">${T.vsCpu}</button>
