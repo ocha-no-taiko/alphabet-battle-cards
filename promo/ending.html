@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ABC ending</title>
+    <!-- 紹介動画の締め。ABC のロゴだけを出し、しばらく静止 → グリッチが強くなる → 一瞬光って暗転（ブツっと終わる）。
+         開発サーバ（abc-play）で http://localhost:5210/promo/ending.html を開く。?loop で繰り返し再生（確認用） -->
+    <style>
+      @font-face {
+        font-family: "JetBrains Mono ABC";
+        src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+        font-display: block;
+      }
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+      body { display: grid; place-items: center; }
+      #stage { position: relative; }
+      .logo {
+        margin: 0;
+        font-family: "JetBrains Mono ABC", monospace;
+        font-feature-settings: "liga" 0, "calt" 0;
+        font-size: 58px;
+        line-height: 1.2;
+        white-space: pre;
+        filter: drop-shadow(0 0 28px rgba(255, 79, 154, 0.35)) drop-shadow(0 0 60px rgba(0, 240, 200, 0.18));
+      }
+      .ghost { position: absolute; left: 0; top: 0; mix-blend-mode: screen; opacity: 0; pointer-events: none; }
+      .ghost span { color: var(--tint) !important; }
+      .slice { position: absolute; left: -60px; right: -60px; height: 0; overflow: hidden; pointer-events: none; }
+      .slice .logo { position: absolute; left: 60px; top: 0; }
+      .noise { position: fixed; left: 0; right: 0; height: 2px; background: #fff; opacity: 0; pointer-events: none; }
+      #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+      #black { position: fixed; inset: 0; background: #000; opacity: 1; pointer-events: none; }
+      body::after { /* 走査線 */
+        content: ""; position: fixed; inset: 0; pointer-events: none;
+        background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 3px);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><pre class="logo" id="logo"></pre></div>
+    <div id="flash"></div>
+    <div id="black"></div>
+    <script type="module">
+      import theme from "/src/data/theme.json";
+      import { artToHtml, bannerArt } from "/src/ui/ascii.ts";
+
+      const COLORS = [theme.attr.Diagonal, theme.attr.Mixed, theme.attr.Curved];
+      const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const stage = document.getElementById("stage");
+      const logo = document.getElementById("logo");
+      const flash = document.getElementById("flash");
+      const black = document.getElementById("black");
+      const ABC = artToHtml(bannerArt("ABC", COLORS));
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const rnd = (a, b) => a + Math.random() * (b - a);
+      logo.innerHTML = ABC;
+
+      // 赤と青にずれる残像
+      const ghosts = ["#ff2e88", "#00f0c8"].map((tint) => {
+        const g = logo.cloneNode(true);
+        g.removeAttribute("id");
+        g.classList.add("ghost");
+        g.style.setProperty("--tint", tint);
+        stage.appendChild(g);
+        return g;
+      });
+      // 横にずれる帯（ロゴを細く切り出して横にずらす）
+      const slices = Array.from({ length: 6 }, () => {
+        const s = document.createElement("div");
+        s.className = "slice";
+        const inner = logo.cloneNode(true);
+        inner.removeAttribute("id");
+        s.appendChild(inner);
+        stage.appendChild(s);
+        return s;
+      });
+      const noises = Array.from({ length: 8 }, () => {
+        const n = document.createElement("div");
+        n.className = "noise";
+        document.body.appendChild(n);
+        return n;
+      });
+
+      /** グリッチ 1 コマ。k は強さ（0〜1） */
+      function glitchFrame(k) {
+        const h = logo.offsetHeight;
+        logo.style.transform = `translate(${rnd(-14, 14) * k}px, ${rnd(-4, 4) * k}px) skewX(${rnd(-18, 18) * k}deg)`;
+        logo.style.filter = Math.random() < 0.3 * k ? `hue-rotate(${rnd(-180, 180)}deg) saturate(2)` : "";
+        ghosts.forEach((g, i) => {
+          g.style.opacity = String(0.4 + 0.5 * k);
+          g.style.transform = `translateX(${(i ? 1 : -1) * rnd(6, 26) * k}px)`;
+        });
+        slices.forEach((s) => {
+          const on = Math.random() < 0.25 + 0.65 * k;
+          const top = rnd(0, h);
+          s.style.top = `${top}px`;
+          s.style.height = on ? `${rnd(4, 26) * (0.5 + k)}px` : "0";
+          s.firstChild.style.top = `${-top}px`;
+          s.style.transform = `translateX(${rnd(-80, 80) * k}px)`;
+        });
+        noises.forEach((n) => {
+          n.style.top = `${rnd(0, innerHeight)}px`;
+          n.style.opacity = Math.random() < 0.5 * k ? String(rnd(0.2, 0.8)) : "0";
+          n.style.height = `${rnd(1, 4)}px`;
+        });
+        // 強くなるほど、一瞬ほかの文字に化ける
+        if (Math.random() < 0.45 * k) {
+          const word = Array.from({ length: 3 }, () => LETTERS[Math.floor(Math.random() * LETTERS.length)]).join("");
+          logo.innerHTML = artToHtml(bannerArt(word, COLORS));
+        } else logo.innerHTML = ABC;
+      }
+
+      function clean() {
+        logo.innerHTML = ABC;
+        logo.style.transform = "";
+        logo.style.filter = "";
+        ghosts.forEach((g) => (g.style.opacity = "0"));
+        slices.forEach((s) => (s.style.height = "0"));
+        noises.forEach((n) => (n.style.opacity = "0"));
+      }
+
+      async function play() {
+        clean();
+        black.style.opacity = "1";
+        flash.style.opacity = "0";
+        await wait(250);
+        // 現れる（数コマちらついてから点く）
+        for (const o of [1, 0, 1, 0.2, 1, 0]) {
+          black.style.opacity = String(o);
+          if (o < 1) glitchFrame(0.5);
+          await wait(45);
+        }
+        clean();
+        // 静止（途中で 1 回だけ小さくちらつく）
+        await wait(1100);
+        glitchFrame(0.25);
+        await wait(70);
+        clean();
+        await wait(650);
+        // だんだん強くなるグリッチ
+        const steps = 22;
+        for (let i = 0; i < steps; i++) {
+          glitchFrame(0.2 + 0.8 * (i / (steps - 1)));
+          await wait(i < steps - 6 ? 55 : 35);
+          if (i % 4 === 3) {
+            clean();
+            await wait(25);
+          }
+        }
+        // 一瞬光って、ブツっと暗転
+        flash.style.opacity = "1";
+        await wait(70); // 30fps の動画で 2 コマ残るくらい
+        black.style.opacity = "1";
+        flash.style.opacity = "0";
+        clean();
+        window.__endingDone = true;
+      }
+
+      await document.fonts.load("58px 'JetBrains Mono ABC'");
+      window.__endingReady = true;
+      if (new URLSearchParams(location.search).has("loop")) {
+        for (;;) {
+          await play();
+          await wait(1200);
+        }
+      } else {
+        window.__playEnding = play;
+      }
+    </script>
+  </body>
+</html>

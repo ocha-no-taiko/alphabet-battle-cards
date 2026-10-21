@@ -41,7 +41,9 @@ cdp.on("Page.screencastFrame", ({ data, metadata, sessionId }) => {
 async function startRec() {
   await cdp.send("Page.startScreencast", { format: "jpeg", quality: 92, maxWidth: 1920, maxHeight: 1080, everyNthFrame: 1 });
 }
+let stoppedAt = 0;
 async function stopRec() {
+  stoppedAt = Date.now() / 1000;
   await cdp.send("Page.stopScreencast");
   await writing;
 }
@@ -283,18 +285,33 @@ for (const b of ["royal", "matrix", "flame"]) {
 }
 await sleep(2200);
 await hideCursor(page);
+
+// 締め: 黒にしてから、ロゴだけのページ（ending.html）へ。グリッチして光り、ブツっと暗転して終わる
+await page.evaluate(() => {
+  const b = document.createElement("div");
+  b.style.cssText = "position:fixed;inset:0;background:#000;z-index:200;opacity:0;transition:opacity .35s";
+  document.body.appendChild(b);
+  requestAnimationFrame(() => (b.style.opacity = "1"));
+});
+await sleep(500);
+await page.goto(`${BASE}promo/ending.html`, { waitUntil: "networkidle0" });
+await startRec().catch(() => {}); // ページが変わっても録画は続く（止まっていた環境のためだけに、もう一度始める）
+await page.waitForFunction(() => window.__endingReady);
+await page.evaluate(() => window.__playEnding());
+await sleep(250); // 暗転のまま少しだけ残して、ブツっと終える
 await stopRec();
 await browser.close();
 
 // ---- MP4 にする ----
 const list = [];
 for (let i = 0; i < frames.length; i++) {
-  const d = i + 1 < frames.length ? frames[i + 1].t - frames[i].t : 1 / 30;
+  // 最後のコマ（暗転）は録画を止めた時刻まで見せる
+  const d = i + 1 < frames.length ? frames[i + 1].t - frames[i].t : Math.min(0.5, Math.max(1 / 30, stoppedAt - frames[i].t));
   list.push(`file '${frames[i].file}'`, `duration ${Math.max(0.001, d).toFixed(4)}`);
 }
 list.push(`file '${frames[frames.length - 1].file}'`);
 writeFileSync(`${FRAMES}list.txt`, list.join("\n"));
-const total = frames[frames.length - 1].t - frames[0].t;
+const total = Math.max(frames[frames.length - 1].t, stoppedAt) - frames[0].t;
 const out = `${OUT}abc-intro.mp4`;
 execFileSync(
   "ffmpeg",
@@ -302,7 +319,7 @@ execFileSync(
     "-y", "-loglevel", "error",
     "-f", "concat", "-safe", "0", "-i", `${FRAMES}list.txt`,
     "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
-    "-vf", `fps=30,scale=1920:1080:flags=lanczos,fade=t=in:st=0:d=0.6,fade=t=out:st=${(total - 1).toFixed(2)}:d=1,format=yuv420p`,
+    "-vf", "fps=30,scale=1920:1080:flags=lanczos,fade=t=in:st=0:d=0.6,format=yuv420p",
     "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-profile:v", "high", "-r", "30",
     "-c:a", "aac", "-b:a", "128k", "-shortest",
     "-movflags", "+faststart",
