@@ -1,0 +1,41 @@
+{
+  "_comment": "ルールの設定値。仕様書の [暫定] [未決定] の項目はここで切り替える。数値は試作用の暫定値。",
+  "deck": {
+    "numberValues": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    "numberCopies": 3,
+    "symbolCount": 13,
+    "unitCount": 7,
+    "maxSameUnit": 1,
+    "maxSameSymbol": 1
+  },
+  "rules": {
+    "winKOs": 5,
+    "subSlots": 3,
+    "storageMax": 5,
+    "openingHand": 5,
+    "subMultiplier": 0.5,
+    "evolveTurns": { "main": 3, "sub": 4 },
+    "evolveBonus": { "hp": 5, "atk": 5 },
+    "numbersPerTurn": 1,
+    "skillsPerTurn": 1,
+    "symbolsPerTurn": 1,
+    "drawPerTurn": 1,
+    "drawPerEmptySub": 1,
+    "openingUnitsToSub": true,
+    "mulligan": true,
+    "mulliganMaxTries": 20,
+
+    "_firstPlayer": "[未決定] 先攻・後攻の決め方。random = 公開のあとにランダム / p1 / p2",
+    "firstPlayer": "random",
+    "_firstTurnAutoDamage": "[未決定] 先攻の1ターン目に自動ダメージを与えるか（仕様の現行ルールは true）",
+    "firstTurnAutoDamage": true,
+    "_autoPlaceHandUnits": "[未決定] ターン開始時のドローのあと、ハンドのユニットを自動でサブの空きに置くか",
+    "autoPlaceHandUnits": false,
+    "_returnToHand": "[暫定] ハンドに戻ったユニット（[ ] など）の扱い。仕様は在籍ターンだけ 0 に戻す",
+    "returnToHand": { "resetTenure": true, "resetEvolution": false, "resetHp": false },
+    "_cleanseKinds": "「.」で終わらせる妨害の種類（封じ・コスト増加・継続ダメージ）",
+    "cleanseKinds": ["sealSymbol", "sealStorage", "sealMainSkill", "costUp", "needle"],
+    "_costReduceOnce": "「'」のコスト減少を、このターン最初に使う技 1 回だけに効かせるか（false ならこのターンの技すべて）",
+    "costReduceOnce": true
+  }
+}

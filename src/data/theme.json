@@ -1,0 +1,26 @@
+{
+  "_comment": "色。カードのアスキーアートは 2 色のグラデーション（属性ごと）。CSS の変数にも同じ値を流し込む。",
+  "bg": "#06060a",
+  "panel": "#0c0c14",
+  "cardBg": "#0a0a12",
+  "line": "#2c2c40",
+  "fg": "#ecebf5",
+  "dim": "#8b8aa6",
+  "faint": "#3b3a55",
+  "accent": "#00f0c8",
+  "accent2": "#ff2e88",
+  "danger": "#ff3b5c",
+  "heal": "#5dff8f",
+  "gold": "#ffd84a",
+  "attr": {
+    "Orthogonal": ["#3fe0ff", "#2f6bff"],
+    "Diagonal": ["#ff4f9a", "#b04dff"],
+    "Curved": ["#8dff6a", "#13c7a0"],
+    "Mixed": ["#ffd23d", "#ff6a2e"]
+  },
+  "num": ["#e0e6ff", "#7d8bff"],
+  "zero": ["#fff27a", "#ff9a1f"],
+  "sym": ["#d2a6ff", "#ff5fcf"],
+  "back": ["#2a1f6b", "#1aa5c9"],
+  "hp": { "high": "#5dff8f", "mid": "#ffd23f", "low": "#ff4d4d" }
+}

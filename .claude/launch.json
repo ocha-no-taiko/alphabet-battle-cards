@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "abc",
+      "runtimeExecutable": "/Users/life_mac_12/.nvm/versions/node/v24.16.0/bin/npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5210
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+# ABC
+
+アルファベットで戦う 2 人用カードゲームの、ブラウザ試作版です。
+カラーアスキーアートで描いた盤面に、Three.js でカードを裏返す演出を重ねています。
+
+- CPU 対戦 / 2 人対戦（同じ画面で交代）/ チュートリアル / デック編集 / ルール表示
+- ルールエンジンは画面から切り離した純粋な関数（`src/engine/`）。同じ seed なら同じ結果
+- カード・ルール・文言・色・CPU の重みは、すべて `src/data/*.json` で編集できる
+
+## 動かし方
+
+Node 22 以上（`.nvmrc` は 24）。
+
+```bash
+npm install
+npm run dev          # http://localhost:5210
+npm test             # ルールエンジンの受け入れテスト（node --test）
+npm run sim -- --games 200            # CPU 同士の対戦を回して勝率を集計
+npm run sim -- --games 200 --no-first-auto   # 先攻 1 ターン目の自動ダメージなし
+npm run build        # 型チェック + dist/ へ出力（相対パスなので静的ホスティングにそのまま置ける）
+```
+
+`?tutorial` を付けて開くと、チュートリアルから始まります。
+
+## 用語
+
+| 画面の言葉 | 意味 |
+|---|---|
+| デック | 山札。尽きたらトラッシュを戻してシャッフル |
+| ハンド | 手札（上限なし） |
+| メイン / サブ | 場のユニット（サブは最大 3 枚・攻撃を受けない） |
+| ストレージ | 数字カードを置く場所（最大 5 枚・公開） |
+
+## 編集できるデータ（`src/data/`）
+
+| ファイル | 中身 |
+|---|---|
+| `config.json` | ルールの数値（撃破数・サブ倍率・進化ターン・ストレージ上限など）と、仕様の [未決定] 項目の切り替え |
+| `units.json` | 26 文字の HP / ATK（小文字の値）・技のコストと効果（効果の部品 `ops` の組み合わせ） |
+| `attributes.json` | 属性ごとの大文字の固有ルール（HP / ATK ボーナス・ターン終了時の回復） |
+| `symbols.json` | 記号 28 種類の効果 |
+| `decks.json` | デックのプリセット |
+| `text.json` | 画面の文言・ログ・ルール説明 |
+| `tutorial.json` | チュートリアルの台本（デックの積み込み順と手順） |
+| `glyphs.json` | カードの大きな文字（5×5 ドット） |
+| `theme.json` | 色 |
+| `ai.json` | CPU の評価関数の重み |
+
+効果の部品（`ops` の `op`）は `src/engine/effects.ts` にあります:
+`damage` `heal` `guard` `halfDamage` `reflect` `protectStorage` `seal` `needle` `costUp` `autoMinus` `oppSubMult` `storageCap`
+`autoBonus` `subMult` `extraSkill` `extraSymbol` `extraStorage` `costReduce` `boostStorage` `evoShift` `draw` `search` `recover`
+`storageToHand` `kick` `yank` `peekDiscard` `cycle` `reshuffleHand` `warp` `swapSub` `swapHandSub` `swapHp` `gamble` `revive` `cleanse`
+
+## 構成
+
+```
+src/engine/   ルールエンジン（types / data / query / core / effects / game）と受け入れテスト
+src/ai/       簡易 CPU（合法手を 1 手ずつ試して評価値が最大の手を選ぶ）
+src/sim/      ヘッドレスのシミュレーター
+src/ui/       アスキーアート（ascii.ts）、Three.js の演出（flip3d.ts）、対戦画面（game/）、タイトル・デック編集・ルール（screens/）、チュートリアル
+public/fonts/ JetBrains Mono 2.304（SIL OFL 1.1、罫線・ブロック文字を含む完全版）
+```
+
+## 仕様書から決めたこと・未決定の扱い
+
+仕様書の [未決定] は勝手に決めず、`config.json` の設定にしています（既定値は仕様の現行ルール）。
+
+| 項目 | 設定 | 既定 |
+|---|---|---|
+| 先攻・後攻の決め方 | `firstPlayer`（random / p1 / p2） | random（公開のあとに決める） |
+| 先攻 1 ターン目の自動ダメージ | `firstTurnAutoDamage` | true |
+| ハンドのユニットをサブの空きに自動で置くか | `autoPlaceHandUnits`（ターン開始のドローのあと） | false |
+| 同名の文字・記号の上限 | `deck.maxSameUnit` / `maxSameSymbol` | 1 |
+
+仕様に書かれていなかった細部は、次のように実装しました。
+
+- 支払いは「合計がコスト以上（または 0 を含む）」に加えて、**余分なカードを含まない組み合わせ**だけを受け付ける（どの 1 枚を抜いても足りなくなる）。画面では無駄の少ない組み合わせを自動で選ぶ
+- 「`'`（コスト -3）」は、このターン最初に使う技 1 回だけに効く（`costReduceOnce`）
+- 「`*`（サブ倍率 1）」と相手の「`/`（サブ倍率 0）」が重なったら、自分のターンに使った `*` を優先
+- 「`.`」で終わらせる妨害は 封じ・コスト増加・Needle（`cleanseKinds`）。`-` と `/` は含めない
+- ハンドに戻ったユニット（`[ ]`）は在籍ターンだけ 0 に戻す（`returnToHand` で進化・HP のリセットも選べる）
+- Drain の回復量は、与えたダメージではなく効果の値（10 / 20）
+- 対象が無い技や記号も使える（空振り）。Kick は相手が `( )` で守っていれば無効
+- 技・記号で引いたユニットはハンドへ（サブに入るのはターン開始時と開始時のドローだけ）
+
+## シミュレーション（参考）
+
+`npm run sim -- --games 250`（CPU 同士、プリセット 5 種の総当たり）:
+
+- 先攻の勝率 56%（`--no-first-auto` で 50%）、平均 28 ターン
+- プリセット別の勝率: ダイアゴナル 78% / スターター 56% / ミックス 42% / フォートレス 37% / トリックスター 37%
+
+仕様書 13.2 の「Diagonal が強い」傾向は、技と記号を入れても残っています。
+
+## ライセンス
+
+フォント JetBrains Mono は SIL Open Font License 1.1（`public/fonts/OFL.txt`）。

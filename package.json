@@ -1,0 +1,25 @@
+{
+  "name": "abc-card-game",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --port 5210",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5211",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "sim": "node src/sim/cli.ts"
+  },
+  "dependencies": {
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "@types/three": "0.186.0",
+    "typescript": "6.0.3",
+    "vite": "7.3.7"
+  }
+}

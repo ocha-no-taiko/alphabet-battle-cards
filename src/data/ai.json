@@ -1,0 +1,39 @@
+{
+  "_comment": "CPU の評価関数の重み。evaluate()（src/ai/cpu.ts）で使う。minGain より評価が上がる手がなければターンを終える。",
+  "minGain": 0.5,
+  "noise": 0.3,
+  "setupSubs": [2, 3, 3],
+  "weights": {
+    "ko": 400,
+    "myHp": 1.0,
+    "oppHp": 1.3,
+    "mainMissing": 60,
+    "unitOnField": 6,
+    "atk": 1.2,
+    "evolved": 10,
+    "tenure": 1.5,
+    "subHp": 0.15,
+    "storageCard": 1.5,
+    "storageValue": 0.7,
+    "storageZero": 5,
+    "hand": { "num": 2.5, "sym": 3.5, "unit": 4 },
+    "oppHand": 1.5,
+    "autoDamage": 1.3,
+    "autoKo": 120,
+    "costReduce": 1.5,
+    "effects": {
+      "guard": 0.8,
+      "half": 15,
+      "reflect": 12,
+      "protectStorage": 3,
+      "needle": 1.0,
+      "sealSymbol": 8,
+      "sealStorage": 7,
+      "sealMainSkill": 9,
+      "costUp": 2,
+      "autoMinus": 0.8,
+      "subMultSet": 5,
+      "storageCap": 2
+    }
+  }
+}

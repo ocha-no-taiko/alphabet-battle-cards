@@ -1,0 +1,7 @@
+{
+  "_comment": "属性ごとの大文字の固有ルール。hpBonus / atkBonus は進化時に足す（進化の共通ボーナス +5 とは別）。endTurnHeal は自分のターン終了時の回復量。",
+  "Orthogonal": { "label": "Orthogonal", "ja": "縦横", "shape": "水平・垂直の線だけ", "icon": "□", "hpBonus": 10, "atkBonus": 0, "endTurnHeal": 0, "ruleText": "最大HP+10" },
+  "Diagonal":   { "label": "Diagonal",   "ja": "斜線", "shape": "斜めの線を含む直線だけ", "icon": "◇", "hpBonus": 0, "atkBonus": 10, "endTurnHeal": 0, "ruleText": "ATK+10" },
+  "Curved":     { "label": "Curved",     "ja": "曲線", "shape": "曲線だけ", "icon": "○", "hpBonus": 0, "atkBonus": 0, "endTurnHeal": 2, "ruleText": "自分のターン終了時にHPを2回復する" },
+  "Mixed":      { "label": "Mixed",      "ja": "混合", "shape": "直線と曲線の両方", "icon": "◈", "hpBonus": 5, "atkBonus": 5, "endTurnHeal": 0, "ruleText": "最大HP+5、ATK+5" }
+}
