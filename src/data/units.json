@@ -59,7 +59,7 @@
     "upper": { "short": "SWAP +10HP", "text": "自分のメインとサブ1枚を入れ替えたあと、新しいメインのHPを10回復する", "ops": [{ "op": "swapSub", "heal": 10 }] } } },
   "T": { "attr": "Orthogonal", "hp": 60, "atk": 8, "skill": { "name": "Tough", "cost": 5,
     "lower": { "short": "GUARD 20", "text": "ガード20", "ops": [{ "op": "guard", "amount": 20 }] },
-    "upper": { "short": "GUARD 40", "text": "ガード40", "ops": [{ "op": "guard", "amount": 40 }] } } },
+    "upper": { "short": "GUARD 25", "text": "ガード25", "ops": [{ "op": "guard", "amount": 25 }] } } },
   "U": { "attr": "Mixed", "hp": 60, "atk": 8, "skill": { "name": "Undo", "cost": 5,
     "lower": { "short": "REVIVE 1/2", "text": "自分のトラッシュのユニット1体を、小文字の状態でHP半分で、サブの空きに出す（空きがなければハンドに加える）", "ops": [{ "op": "revive", "hp": "half" }] },
     "upper": { "short": "REVIVE FULL", "text": "自分のトラッシュのユニット1体を、小文字の状態でHP満タンで、サブの空きに出す（空きがなければハンドに加える）", "ops": [{ "op": "revive", "hp": "full" }] } } },
