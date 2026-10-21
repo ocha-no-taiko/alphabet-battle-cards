@@ -1,6 +1,6 @@
 // ゲームの作成と操作の適用。applyAction は入力の状態を変えず、新しい状態とイベントを返す。
 import { DECK_RULES, SYMBOLS, mergeRules, type Rules } from "./data.ts";
-import { beginTurn, drawOne, emit, freshTurn, runResume, type Ctx } from "./core.ts";
+import { beginTurn, drawOne, emit, freshTurn, payCost, runResume, type Ctx } from "./core.ts";
 import { choiceRequests, resolveOps, validateChoices } from "./effects.ts";
 import {
   canEndTurn, canPlace, canUseSkill, canUseSymbol, card, freshUnitState, isValidPayment, mainCandidates, skillCost,
@@ -121,9 +121,7 @@ function startGame(cx: Ctx): void {
 /** 効果に必要な選択。技は支払い後、記号はハンドから出したあとの状態で求める */
 export function requestsForSkill(s: GameState, p: PlayerId, unit: number, payment: number[]): ChoiceRequest[] {
   const t = structuredClone(s);
-  const pl = t.players[p];
-  pl.storage = pl.storage.filter((id) => !payment.includes(id));
-  pl.trash.push(...payment);
+  payCost({ s: t, events: [], trace: false }, p, payment, skillCost(s, p, unit));
   const u = unitCard(t, unit);
   return u ? choiceRequests(t, p, skillForm(u).ops) : [];
 }
@@ -167,13 +165,8 @@ function apply(cx: Ctx, a: Action): string | null {
       if (!isValidPayment(s, a.player, a.payment, cost)) return "payment";
       const reqs = requestsForSkill(s, a.player, a.unit, a.payment);
       if (!validateChoices(reqs, a.choices)) return "choices";
-      const pl = s.players[a.player];
       emit(cx, { t: "skill", p: a.player, id: a.unit });
-      if (a.payment.length) {
-        pl.storage = pl.storage.filter((id) => !a.payment.includes(id));
-        pl.trash.push(...a.payment);
-        emit(cx, { t: "pay", p: a.player, ids: a.payment });
-      }
+      payCost(cx, a.player, a.payment, cost);
       s.turn.skillsUsed += 1;
       if (s.rules.costReduceOnce) s.turn.costReduce = 0;
       const u = unitCard(s, a.unit)!;

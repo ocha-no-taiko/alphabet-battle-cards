@@ -142,14 +142,16 @@ export function unitArt(c: UnitCard, v: UnitView = {}): Art {
   return a;
 }
 
-export function numberArt(value: number): Art {
+/** 数字カード。left はお釣りで減ったあとの残り（大きな文字は残りの値） */
+export function numberArt(value: number, left = value): Art {
   const [c1, c2] = value === 0 ? theme.zero : theme.num;
   const a = blank(CARD_W, CARD_H, theme.cardBg);
   frame(a, 0, 0, CARD_W, CARD_H, mix(c1, theme.cardBg, 0.5));
-  put(a, 1, 1, String(value), c1);
-  putRight(a, 13, 1, value === 0 ? "WILD" : "ENERGY", value === 0 ? c1 : theme.dim);
-  glyph(a, 2, 4, String(value), c1, c2);
-  putRight(a, 13, 10, String(value), c1);
+  put(a, 1, 1, String(value), left < value ? theme.dim : c1);
+  putRight(a, 13, 1, value === 0 ? "WILD" : left < value ? `LEFT ${left}` : "ENERGY", value === 0 || left < value ? c1 : theme.dim);
+  glyph(a, 2, 4, String(left), c1, c2);
+  if (left < value) put(a, 1, 10, `${value}-${value - left}`, theme.dim);
+  putRight(a, 13, 10, String(left), c1);
   if (value === 0) put(a, 1, 10, "ANY COST", theme.dim);
   return a;
 }
@@ -199,7 +201,7 @@ export function labelArt(big: string, label: string, color: string): Art {
 
 export function cardArt(c: Card, v: UnitView = {}): Art {
   if (c.kind === "unit") return unitArt(c, v);
-  if (c.kind === "num") return numberArt(c.value);
+  if (c.kind === "num") return numberArt(c.value, c.value - (c.spent ?? 0));
   return symbolArt(c.sym);
 }
 

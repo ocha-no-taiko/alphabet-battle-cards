@@ -15,7 +15,7 @@ export interface UnitState {
 
 export type Card =
   | { id: number; owner: PlayerId; kind: "unit"; letter: string; unit: UnitState }
-  | { id: number; owner: PlayerId; kind: "num"; value: number }
+  | { id: number; owner: PlayerId; kind: "num"; value: number; /** お釣りありのとき、使った分 */ spent?: number }
   | { id: number; owner: PlayerId; kind: "sym"; sym: string };
 
 export type UnitCard = Extract<Card, { kind: "unit" }>;
@@ -129,7 +129,7 @@ export type GameEvent = (
   | { t: "deckEmpty"; p: PlayerId }
   | { t: "reshuffle"; p: PlayerId; count: number }
   | { t: "place"; p: PlayerId; id: number }
-  | { t: "pay"; p: PlayerId; ids: number[] }
+  | { t: "pay"; p: PlayerId; ids: number[]; /** お釣りが残ったカードと残りの値 */ kept?: { id: number; left: number; used: number } }
   | { t: "skill"; p: PlayerId; id: number }
   | { t: "symbol"; p: PlayerId; id: number }
   | { t: "symbolDone"; p: PlayerId; id: number }

@@ -9,6 +9,8 @@
     "maxSameSymbol": 1
   },
   "rules": {
+    "_change": "お釣り。true なら、支払いの余りはいちばん大きい数字カードに「残り」として残る（使い切ったカードだけトラッシュへ）。false なら余りは無駄になる（仕様書 5.1）",
+    "change": true,
     "winKOs": 5,
     "subSlots": 3,
     "storageMax": 5,

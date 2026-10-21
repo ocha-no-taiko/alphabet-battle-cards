@@ -131,7 +131,8 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
     }
     const evolveIds = g.filter((e) => e.t === "evolve").map((e) => (e as { id: number }).id);
     const swapIds = g.flatMap((e) => (e.t === "swap" ? [e.a, e.b] : []));
-    const hidden = new Set([...moved, ...evolveIds, ...swapIds]);
+    const keptIds = g.flatMap((e) => (e.t === "pay" && e.kept ? [e.kept.id] : []));
+    const hidden = new Set([...moved, ...evolveIds, ...swapIds, ...keptIds]);
     host.render(snap, hidden);
     host.onEvents(g, snap);
     const after = cardRects(board);
@@ -212,6 +213,17 @@ export async function animateEvents(host: AnimHost, prev: GameState, events: Gam
         case "symbol":
           jobs.push(wait(650 / sp));
           break;
+        case "pay": {
+          // お釣りが残ったカードは、その場で裏返して残りの値を見せる
+          const r = ev.kept ? after.get(ev.kept.id) : null;
+          if (ev.kept && r) {
+            const oldArt = visibleArt(cur, ev.kept.id, host.viewer);
+            const newArt = visibleArt(snap, ev.kept.id, host.viewer);
+            jobs.push(flipInPlace(r, oldArt, newArt, { duration: 560, lift: 90 }).then(() => unhide(board, ev.kept!.id)));
+            popup(r, `-${ev.kept.used}`, "auto", scale * 0.7, sp);
+          }
+          break;
+        }
         case "evolve": {
           const r = after.get(ev.id);
           const oldArt = visibleArt(cur, ev.id, host.viewer);

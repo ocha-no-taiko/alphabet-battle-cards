@@ -22,7 +22,12 @@ export function logLine(ev: GameEvent, s: GameState, viewer: PlayerId, names: [s
     case "deckEmpty": return fmt(L.deckEmpty, { who: who(ev.p) });
     case "reshuffle": return fmt(L.reshuffle, { who: who(ev.p), n: ev.count });
     case "place": return fmt(L.place, { who: who(ev.p), card: name(ev.id) });
-    case "pay": return fmt(L.pay, { who: who(ev.p), cards: names2(ev.ids) });
+    case "pay": {
+      const parts: string[] = [];
+      if (ev.ids.length) parts.push(fmt(L.pay, { who: who(ev.p), cards: names2(ev.ids) }));
+      if (ev.kept) parts.push(fmt(L.payKept, { who: who(ev.p), card: name(ev.kept.id), used: ev.kept.used, left: ev.kept.left }));
+      return parts.join(" / ") || null;
+    }
     case "skill": {
       const c = s.cards[ev.id];
       const skill = c.kind === "unit" ? UNITS[c.letter].skill.name : "";

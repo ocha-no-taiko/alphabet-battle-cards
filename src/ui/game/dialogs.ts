@@ -3,7 +3,7 @@ import theme from "../../data/theme.json" with { type: "json" };
 import text from "../../data/text.json" with { type: "json" };
 import { SYMBOLS, UNITS } from "../../engine/data.ts";
 import { requestsForSkill, requestsForSymbol } from "../../engine/game.ts";
-import { autoPay, isValidPayment, mainCandidates, paymentValue, skillCost, skillForm, unitCard } from "../../engine/query.ts";
+import { autoPay, changeCard, isValidPayment, mainCandidates, paymentValue, skillCost, skillForm, unitCard } from "../../engine/query.ts";
 import type { Action, ChoiceRequest, Choices, GameState, PlayerId } from "../../engine/types.ts";
 import { artToHtml, bannerArt, cardArt } from "../ascii.ts";
 import { esc, fmt } from "../text.ts";
@@ -80,7 +80,10 @@ export function skillDialog(host: HTMLElement, s: GameState, p: PlayerId, unitId
       const valid = isValidPayment(s, p, payment, cost);
       const sum = payment.reduce((a, id) => a + paymentValue(s, id), 0);
       const hasZero = payment.some((id) => (s.cards[id] as { value?: number }).value === 0);
-      const payInfo = cost <= 0 ? D.payFree : hasZero && valid ? D.payZero : fmt(D.paySum, { sum, cost });
+      const kept = valid ? changeCard(s, payment, cost) : null;
+      const payInfo = cost <= 0 ? D.payFree : hasZero && valid ? D.payZero
+        : kept ? fmt(D.payChange, { sum, cost, left: kept.left, card: (s.cards[kept.id] as { value: number }).value })
+        : fmt(D.paySum, { sum, cost });
       const storage = s.players[p].storage
         .map((id) => miniCard(s, id, "dlg", 'data-pay="1"').replace('class="card', `class="card${payment.includes(id) ? " selected" : ""}`))
         .join("");

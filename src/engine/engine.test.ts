@@ -69,8 +69,8 @@ function clearHands(s: GameState): void {
   }
 }
 
-test("お釣りなし: [9] でコスト3を払うと 9 がトラッシュへ。[0] ならコスト6も払える", () => {
-  let s = setupGame();
+test("お釣りなし（change: false）: [9] でコスト3を払うと 9 がトラッシュへ。[0] ならコスト6も払える", () => {
+  let s = setupGame({ rules: { change: false } });
   clearHands(s);
   s.players[0].storage = [];
   const nine = num(s, 0, 9);
@@ -92,6 +92,45 @@ test("お釣りなし: [9] でコスト3を払うと 9 がトラッシュへ。[
   move(t, z, "sub");
   t = act(t, { type: "useSkill", player: 0, unit: z, payment: [zero] });
   assert.equal(unitCard(t, t.players[1].main)!.unit.hp, 60 - 25);
+  assert.ok(t.players[0].trash.includes(zero));
+});
+
+test("お釣りあり: [9] でコスト3を払うと 9 は残り6でストレージに残り、次の支払いに使える", () => {
+  let s = setupGame({ subs0: ["H"] });
+  clearHands(s);
+  const nine = num(s, 0, 9);
+  move(s, nine, "storage");
+  s = act(s, { type: "useSkill", player: 0, unit: unit(s, 0, "A"), payment: [nine] });
+  assert.deepEqual(s.players[0].storage, [nine]);
+  assert.equal((s.cards[nine] as { spent?: number }).spent, 3);
+  // & の代わりに技の回数を足して、続けてコスト 2 の Help を払う → 残り 4
+  s.turn.skillsAllowed = 2;
+  s = act(s, { type: "useSkill", player: 0, unit: unit(s, 0, "H"), payment: [nine] });
+  assert.equal((s.cards[nine] as { spent?: number }).spent, 5);
+  // 残り 4 ではコスト 6 は払えない
+  assert.equal(isValidPayment(s, 0, [nine], 6), false);
+});
+
+test("お釣りあり: 余りはいちばん大きいカードに残り、ほかはトラッシュ。ちょうど使い切ればトラッシュ", () => {
+  let s = setupGame({ subs0: ["Z"] });
+  clearHands(s);
+  const four = num(s, 0, 4);
+  const three = num(s, 0, 3);
+  for (const id of [four, three]) move(s, id, "storage");
+  // Zap（コスト 6）を [4, 3] で → 3 はトラッシュ、4 は残り 1
+  s = act(s, { type: "useSkill", player: 0, unit: unit(s, 0, "Z"), payment: [three, four] });
+  assert.deepEqual(s.players[0].storage, [four]);
+  assert.ok(s.players[0].trash.includes(three));
+  assert.equal((s.cards[four] as { spent?: number }).spent, 3);
+
+  let t = setupGame({ subs0: ["Z"] });
+  clearHands(t);
+  const f2 = num(t, 0, 4);
+  const two = num(t, 0, 2);
+  for (const id of [f2, two]) move(t, id, "storage");
+  t = act(t, { type: "useSkill", player: 0, unit: unit(t, 0, "Z"), payment: [f2, two] });
+  assert.deepEqual(t.players[0].storage, []);
+  assert.equal((t.cards[f2] as { spent?: number }).spent, undefined); // トラッシュで元に戻る
 });
 
 test("支払い: 余分な札を含む支払いは拒否", () => {

@@ -1,7 +1,7 @@
 // 効果の部品。技と記号の ops（units.json / symbols.json）をここで解決する。
 // 選択が要る部品は choiceRequests で「どこから何枚」を返し、プレイヤーの選択は Choices（キー = 部品の番号）で受け取る。
 import type { Op } from "./data.ts";
-import { addEffect, dealDamage, drawOne, emit, heal, returnUnitToHand, toTrash, type Ctx } from "./core.ts";
+import { addEffect, dealDamage, drawOne, emit, heal, resetCard, returnUnitToHand, toTrash, type Ctx } from "./core.ts";
 import { card, freshUnitState, isActive, other, unitCard } from "./query.ts";
 import { randInt, shuffle } from "./rng.ts";
 import type { ChoiceRequest, Choices, GameState, PlayerId } from "./types.ts";
@@ -194,7 +194,10 @@ export function resolveOps(cx: Ctx, p: PlayerId, ops: Op[], choices: Choices): v
         break;
       case "storageToHand":
         if (pick.length) {
-          for (const id of pick) remove(me.storage, id);
+          for (const id of pick) {
+            remove(me.storage, id);
+            resetCard(s.cards[id]);
+          }
           me.hand.push(...pick);
           emit(cx, { t: "toHand", p, ids: pick, from: "storage" });
         }

@@ -194,8 +194,9 @@ export function detailHtml(s: GameState, id: number | null, viewer: PlayerId, re
   const D = text.detail;
   if (!isFaceVisible(s, id, viewer, reveal)) return `<p class="dim">${D.hidden}</p>`;
   if (c.kind === "num") {
-    return `<h3 style="color:${c.value === 0 ? theme.zero[0] : theme.num[0]}">${c.value}</h3>
-      <p class="dim">${D.number}</p><p>${D.numberText}</p>${c.value === 0 ? `<p style="color:${theme.zero[0]}">${D.zeroText}</p>` : ""}`;
+    const left = c.spent ? `<p style="color:${theme.gold}">${fmt(D.numberLeft, { left: c.value - c.spent, used: c.spent })}</p>` : "";
+    return `<h3 style="color:${c.value === 0 ? theme.zero[0] : theme.num[0]}">${c.value}</h3>${left}
+      <p class="dim">${D.number}</p><p>${s.rules.change ? D.numberText : D.numberTextNoChange}</p>${c.value === 0 ? `<p style="color:${theme.zero[0]}">${D.zeroText}</p>` : ""}`;
   }
   if (c.kind === "sym") {
     const d = SYMBOLS[c.sym];

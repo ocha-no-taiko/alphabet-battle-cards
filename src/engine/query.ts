@@ -147,10 +147,24 @@ export function skillCost(s: GameState, p: PlayerId, unitId: number): number {
   return Math.max(0, base + up - down);
 }
 
+/** 数字カードの残りの値（お釣りで使った分を引く） */
+export function numberLeft(c: Card): number {
+  return c.kind === "num" ? c.value - (c.spent ?? 0) : 0;
+}
+
 export function paymentValue(s: GameState, id: number): number {
   const c = card(s, id);
   if (c.kind !== "num") return 0;
-  return c.value + (s.turn.boostCard === id && c.value !== 0 ? s.turn.boostAmount : 0);
+  return numberLeft(c) + (s.turn.boostCard === id && c.value !== 0 ? s.turn.boostAmount : 0);
+}
+
+/** お釣りを残すカード（支払いの中でいちばん値が大きいもの）。0 で払うときと、お釣りなしのときは null */
+export function changeCard(s: GameState, ids: number[], cost: number): { id: number; left: number } | null {
+  if (!s.rules.change || cost <= 0 || ids.some((id) => (s.cards[id] as { value?: number }).value === 0)) return null;
+  const sorted = [...ids].sort((a, b) => paymentValue(s, b) - paymentValue(s, a) || a - b);
+  const others = sorted.slice(1).reduce((a, id) => a + paymentValue(s, id), 0);
+  const left = paymentValue(s, sorted[0]) - (cost - others);
+  return left > 0 ? { id: sorted[0], left } : null;
 }
 
 function satisfies(s: GameState, ids: number[], cost: number): boolean {
@@ -178,8 +192,17 @@ export function autoPay(s: GameState, p: PlayerId, cost: number): number[] | nul
     const ids = storage.filter((_, i) => mask & (1 << i));
     if (!isValidPayment(s, p, ids, cost)) continue;
     const hasZero = ids.some((id) => (s.cards[id] as { value?: number }).value === 0);
-    const waste = hasZero ? 0 : ids.reduce((a, id) => a + paymentValue(s, id), 0) - cost;
-    const score = waste * 10 + (hasZero ? 25 : 0) + ids.length;
+    const total = ids.reduce((a, id) => a + paymentValue(s, id), 0);
+    let score: number;
+    if (s.rules.change) {
+      // お釣りあり: 使い切るカードが少なく、お釣りは小さいカードに残す（大きい数字を温存）
+      const kept = changeCard(s, ids, cost);
+      const consumed = ids.length - (kept ? 1 : 0);
+      score = consumed * 10 + (hasZero ? 25 : 0) + (kept ? paymentValue(s, kept.id) * 0.1 : 0);
+    } else {
+      const waste = hasZero ? 0 : total - cost;
+      score = waste * 10 + (hasZero ? 25 : 0) + ids.length;
+    }
     if (score < bestScore) {
       bestScore = score;
       best = ids;

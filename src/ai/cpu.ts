@@ -3,7 +3,7 @@
 import { applyAction, requestsForSkill, requestsForSymbol } from "../engine/game.ts";
 import {
   autoDamage, autoPay, canPlace, canUseSkill, canUseSymbol, fieldUnits, mainCandidates, other, skillCost, sumEffect,
-  activeEffects, unitAtk, unitCard,
+  activeEffects, numberLeft, unitAtk, unitCard,
 } from "../engine/query.ts";
 import { rand } from "../engine/rng.ts";
 import type { Action, Card, ChoiceRequest, Choices, GameState, PlayerId } from "../engine/types.ts";
@@ -46,7 +46,7 @@ export function evaluate(s: GameState, me: PlayerId): number {
     }
     for (const id of P[p].storage) {
       const c = s.cards[id];
-      if (c.kind === "num") x += W.storageCard + c.value * W.storageValue + (c.value === 0 ? W.storageZero : 0);
+      if (c.kind === "num") x += W.storageCard + numberLeft(c) * W.storageValue + (c.value === 0 ? W.storageZero : 0);
     }
     return x;
   };

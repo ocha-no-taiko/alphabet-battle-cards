@@ -2,7 +2,7 @@
 // どれも Ctx の状態（applyAction が複製したもの）を直接書き換え、イベントを積む。
 import { ATTRS } from "./data.ts";
 import {
-  activeEffects, autoDamage, card, evoThreshold, evolveGain, fieldUnits, freshUnitState, mainCandidates, other,
+  activeEffects, autoDamage, card, changeCard, evoThreshold, paymentValue, evolveGain, fieldUnits, freshUnitState, mainCandidates, other,
   sumEffect, unitCard, unitDef,
 } from "./query.ts";
 import { shuffle } from "./rng.ts";
@@ -38,6 +38,31 @@ export function freshTurn(s: GameState): TurnState {
 /** カードをトラッシュへ。ユニットは進化と在籍ターンをリセットする（小文字・HP 満タンに戻る） */
 export function resetCard(c: Card): void {
   if (c.kind === "unit") c.unit = freshUnitState(c.letter);
+  if (c.kind === "num") delete c.spent;
+}
+
+/** 技の支払い。お釣りありなら余りをいちばん大きいカードに残し、ほかはトラッシュへ */
+export function payCost(cx: Ctx, p: PlayerId, ids: number[], cost: number): void {
+  const s = cx.s;
+  const pl = s.players[p];
+  if (!ids.length) return;
+  const change = changeCard(s, ids, cost);
+  let kept: { id: number; left: number; used: number } | undefined;
+  if (change) {
+    const c = card(s, change.id);
+    // # の +2 から先に使う。使った分はカードに記録する
+    const boost = s.turn.boostCard === change.id ? s.turn.boostAmount : 0;
+    const used = paymentValue(s, change.id) - change.left;
+    const fromBoost = Math.min(boost, used);
+    if (c.kind === "num") c.spent = (c.spent ?? 0) + used - fromBoost;
+    if (fromBoost > 0) s.turn.boostCard = null;
+    // 残りは # を外した値（ターンが終わると +2 は消えるため）
+    kept = { id: change.id, left: paymentValue(s, change.id) - (s.turn.boostCard === change.id ? boost : 0), used };
+  }
+  const gone = ids.filter((id) => id !== kept?.id);
+  pl.storage = pl.storage.filter((id) => !gone.includes(id));
+  for (const id of gone) toTrash(s, p, id);
+  emit(cx, { t: "pay", p, ids: gone, kept });
 }
 
 export function toTrash(s: GameState, p: PlayerId, id: number): void {
