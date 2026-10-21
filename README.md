@@ -135,7 +135,7 @@ UDEV Gothic の文字を足すとき（文言に新しい漢字を足して、�
 ```bash
 cd promo && npm install
 npm run thumbs   # 1920×1080 の PNG を 5 枚（タイトル・対戦・進化・トロフィー・撃破）
-npm run video    # 1920×1080・30fps・H.264 の紹介動画 abc-intro.mp4（約 1 分 50 秒、音は無音のトラック）
+npm run video    # 1920×1080・30fps・H.264 の紹介動画 abc-intro.mp4（台本の 11 シーン・約 1 分 55 秒、音は無音のトラック。テロップは video.mjs の SCRIPT）
 ```
 
 撮影のときは、見せ場が出るように盤面を整えています（進化の直前にする、相手の HP を減らしておく など）。

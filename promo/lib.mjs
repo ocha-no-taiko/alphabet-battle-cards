@@ -52,6 +52,7 @@ export async function installHelpers(page) {
     .promo-cap.top { left: 30px; top: 70px; }
     .promo-cap .ja { font-size: 52px; font-weight: 700; color: #fff; letter-spacing: 2px; line-height: 1.3; }
     .promo-cap .en { font-size: 20px; letter-spacing: 10px; color: var(--accent); margin-top: 8px; }
+    .promo-cap .sub { font-size: 28px; color: #cfcde0; margin-top: 12px; letter-spacing: 1px; }
     .promo-cap.show { animation: promoCap 0.5s cubic-bezier(.2,.8,.2,1) both; }
     @keyframes promoCap { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
     .promo-cursor { position: fixed; z-index: 99; width: 26px; height: 26px; pointer-events: none; left: 0; top: 0;
@@ -99,7 +100,9 @@ export async function caption(page, ja, en = "", pos = "bottom") {
       document.querySelectorAll(".promo-cap").forEach((e) => e.remove());
       const el = document.createElement("div");
       el.className = `promo-cap ${pos} show`;
-      el.innerHTML = `<div class="ja">${ja}</div>${en ? `<div class="en">${en}</div>` : ""}`;
+      // 2 行目が日本語なら小さい補足、英字ならアクセント色の英字
+      const subClass = /[^\x00-\x7f]/.test(en) ? "sub" : "en";
+      el.innerHTML = `<div class="ja">${ja}</div>${en ? `<div class="${subClass}">${en}</div>` : ""}`;
       document.body.appendChild(el);
     },
     ja,

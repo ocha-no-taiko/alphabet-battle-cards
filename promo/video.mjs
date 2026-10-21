@@ -2,7 +2,7 @@
 // 画面の更新を時刻つきのコマ（JPEG）で受け取り、ffmpeg で一定のコマ数の MP4 にする。
 // 先に abc-play（開発サーバ）を動かしておく。  使い方: npm run video
 import { execFileSync } from "node:child_process";
-import { mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   BASE, caption, clearCaption, clickEl, hideCursor, installHelpers, launch, prefsFor, showCursor, sleep, waitFor,
@@ -13,7 +13,18 @@ const FRAMES = `${OUT}frames/`;
 rmSync(FRAMES, { recursive: true, force: true });
 mkdirSync(FRAMES, { recursive: true });
 
-const { browser, page } = await launch(prefsFor());
+// 勝利のときにトロフィーの獲得演出を出さないよう、このマッチで取れそうなトロフィーは最初から持っている状態にする。
+// （コレクションの場面で、ほどよく集まって見えるようにもなる）
+const LOCKED = new Set(["tutorial", "hotseat", "all-letters", "all-symbols", "complete", "straight", "needle-ko", "reflect-ko",
+  "jackpot-9", "revive", "last-stand", "one-shot", "losses-7"]);
+const ALL_IDS = JSON.parse(readFileSync(new URL("../src/data/trophies.json", import.meta.url), "utf8")).trophies.map((x) => x.id);
+const owned = Object.fromEntries(ALL_IDS.filter((id) => !LOCKED.has(id)).map((id) => [id, "2026-10-20T12:00:00.000Z"]));
+const { browser, page } = await launch(
+  prefsFor({
+    games: 31, wins: 22, losses: 3, streak: 4, bestStreak: 6, kos: 131, evolutions: 58,
+    deckWins: { starter: 6, diagonal: 5, mixed: 4, fortress: 3, trickster: 4 }, trophies: owned,
+  }),
+);
 
 // ---- 録画（CDP の screencast）----
 const cdp = await page.createCDPSession();
@@ -98,91 +109,130 @@ async function stageHand(spec) {
   }, spec);
 }
 
-// ---- 撮影 ----
+// ---- 撮影（台本の 11 シーン）----
+// 1 本文、2 行目は小さい補足。
+const SCRIPT = {
+  title: ["アルファベットで戦う、<br>2 人用カードゲーム。", "キャラを覚える必要なし。"],
+  deck: ["まずは、デッキを組む。", "アルファベットは 7 文字、記号は 13 文字。"],
+  setup: ["バトル前に、<br>メインとサブを選ぶ。", "ここで戦い方を決める。"],
+  energy: ["数字で、<br>エネルギーを蓄える。", "蓄えられる数字は、1 ターンに 1 枚。"],
+  skill: ["スキルを、数字で払う。", "0 は、どんなコストでも払えるワイルドカード。"],
+  symbol: ["記号を使うと、特殊効果。", "攻撃、防御、妨害が可能。"],
+  auto: ["ターン終了で、<br>自動ダメージ。", "ここまでを、繰り返す。"],
+  evolve: ["アルファベットは、<br>進化する。", "小文字から、大文字へ。"],
+  lethal: ["LETHAL は、<br>トドメの合図。", "運命を、受け入れよう。"],
+  win: ["5 回撃破で、勝利。", "5〜10 分で、サクサクプレイ。"],
+  collection: ["35 種類のトロフィーと、<br>10 種類のカードデザイン。", "やり込み要素も、もちろん収録。"],
+};
+const cap = (key, pos = "top") => caption(page, SCRIPT[key][0], SCRIPT[key][1], pos);
+
 await page.goto(BASE, { waitUntil: "domcontentloaded" });
 await startRec();
 await installHelpers(page);
 await waitFor(page, () => !!document.querySelector(".logo-art"));
 
-// A. タイトル
-await sleep(3200);
+// 1. タイトル
+await sleep(2400);
+await cap("title", "bottom");
+await sleep(800);
 await showCursor(page, 1500, 900);
 await sleep(300);
 await clickEl(page, ".logo-art");
-await sleep(1300);
+await sleep(1200);
 const pt = await floatingCardPoint();
 if (pt) await clickAt(pt.x, pt.y);
-await sleep(1400);
-await page.keyboard.type("abc", { delay: 120 });
-await sleep(1800);
-
-// B. 対戦の開始
-await caption(page, "26 文字のアルファベットで戦う<br>2 人用カードゲーム", "ALPHABET BATTLE CARDS");
 await sleep(1200);
-await clickEl(page, "[data-go=cpu]");
+await page.keyboard.type("abc", { delay: 120 });
+await sleep(1600);
+await clearCaption(page);
+
+// 2. デック編集
+await clickEl(page, "[data-go=deck]");
+await waitFor(page, () => !!document.querySelector(".deck .pick") && !document.querySelector(".fx-curtain"));
+await cap("deck", "bottom");
 await sleep(900);
+for (const sel of ['.deck .pick[data-unit="M"]', '.deck .pick[data-unit="Z"]', '.deck .pick[data-sym="%"]', '.deck .pick[data-sym="<>"]']) {
+  await clickEl(page, sel, { moveMs: 500 });
+  await sleep(650);
+}
+await sleep(800);
+await clearCaption(page);
+await clickEl(page, ".deck [data-back]");
+await hideCursor(page);
+await waitFor(page, () => !!document.querySelector("[data-go=cpu]") && !document.querySelector(".fx-curtain"));
+await sleep(600);
+
+// 3. メインとサブを選ぶ
+await clickEl(page, "[data-go=cpu]");
+await sleep(700);
 await page.select('[data-sel="cpu"]', "preset:diagonal");
 await clickEl(page, "[data-start=cpu]");
-await clearCaption(page);
 await waitFor(page, () => !!document.querySelector(".pool-item") && !document.querySelector(".fx-curtain"));
 await page.evaluate(() => (window.__abc.s.setupOpts = { ...(window.__abc.s.setupOpts ?? {}), first: 0 }));
-await caption(page, "メインとサブを選んで<br>同時に公開", "SETUP", "top");
-await sleep(1200);
+await cap("setup");
+await sleep(1100);
 for (const i of [0, 5, 6]) {
   await clickEl(page, `.pool-item:nth-child(${i + 1})`, { moveMs: 450 });
   await sleep(380);
 }
 await sleep(500);
 await clickEl(page, ".setup-dlg [data-go]");
-await clearCaption(page);
 await hideCursor(page);
-await untilMyTurn();
-await sleep(600);
-
-// C. 基本の流れ
-await stageHand({ nums: [9, 2], syms: ["%"] });
-await caption(page, "数字カードはエネルギー", "ENERGY", "top");
-await sleep(900);
-await clickEl(page, '.hand.me [data-tut="card-n9"]');
-await sleep(1500);
-await caption(page, "技の支払いは<br>お釣りあり", "PAY & KEEP THE CHANGE", "top");
-await sleep(700);
-await clickEl(page, ".row.me .main-slot .card");
-await sleep(1500);
-await clickEl(page, ".skill-dlg [data-go]");
-await sleep(2600);
-await caption(page, "記号カードは<br>無料の特殊効果", "SYMBOLS", "top");
-await sleep(700);
-await clickEl(page, '.hand.me [data-tut="card-s%"]');
-await sleep(1300);
-await clickEl(page, ".symbol-dlg [data-go]");
-await sleep(2400);
-await caption(page, "ターンの終わりに<br>自動ダメージ", "AUTO DAMAGE", "top");
-await sleep(700);
-await clickEl(page, "[data-end]");
-await hideCursor(page);
-await sleep(2600);
+await sleep(1200);
 await clearCaption(page);
 await untilMyTurn();
 await sleep(500);
 
-// D. 進化
+// 4. 数字を置く（0 を置いて、次のシーンで使う）
+await stageHand({ nums: [0, 3, 7], syms: ["%", "!"] });
+await cap("energy");
+await sleep(1000);
+await clickEl(page, '.hand.me [data-tut="card-n0"]');
+await sleep(2000);
+
+// 5. スキルを数字で払う（0 で払う）
+await cap("skill");
+await sleep(900);
+await clickEl(page, ".row.me .main-slot .card");
+await sleep(2200);
+await clickEl(page, ".skill-dlg [data-go]");
+await sleep(2400);
+
+// 6. 記号
+await cap("symbol");
+await sleep(900);
+await clickEl(page, '.hand.me [data-tut="card-s%"]');
+await sleep(1500);
+await clickEl(page, ".symbol-dlg [data-go]");
+await sleep(2400);
+
+// 7. ターン終了で自動ダメージ
+await cap("auto");
+await sleep(900);
+await clickEl(page, "[data-end]");
+await hideCursor(page);
+await sleep(2800);
+await untilMyTurn();
+await clearCaption(page);
+await sleep(400);
+
+// 8. 進化
 await page.evaluate(() => {
   const a = window.__promo.unit(0, "A");
   a.unit.tenure = Math.max(a.unit.tenure, 2);
   window.__promo.render();
 });
-await caption(page, "在籍ターンがたまると<br>小文字 → 大文字に進化", "EVOLVE", "top");
-await sleep(1600);
+await cap("evolve");
+await sleep(1500);
 await clickEl(page, "[data-end]");
 await hideCursor(page);
 await waitFor(page, () => !!document.querySelector(".banner.evolve"));
 await sleep(2200);
 await clearCaption(page);
 await untilMyTurn();
-await sleep(500);
+await sleep(400);
 
-// E. LETHAL → K.O. → MATCH POINT
+// 9. LETHAL → K.O.（このあと MATCH POINT が出る）
 await page.evaluate(() => {
   const s = window.__abc.s;
   s.players[0].kos = 3;
@@ -192,63 +242,47 @@ await page.evaluate(() => {
   m.unit.hp = Math.min(m.unit.hp, 6);
   window.__promo.render();
 });
-await caption(page, "倒せる見込みになると<br>LETHAL", "LETHAL", "top");
-await sleep(2600);
+await cap("lethal");
+await sleep(2800);
 await clickEl(page, "[data-end]");
 await hideCursor(page);
-await clearCaption(page);
 await waitFor(page, () => !!document.querySelector(".banner.match"), 20000);
 await sleep(1800);
+await clearCaption(page);
 await untilMyTurn();
 await sleep(400);
 
-// F. 勝利とトロフィー
+// 10. 5 回撃破で勝利（トロフィーは取らない状態にしてあるので、そのまま結果へ）
 await page.evaluate(() => {
   const s = window.__abc.s;
   const m = s.cards[s.players[1].main];
   m.unit.hp = Math.min(m.unit.hp, 6);
   window.__promo.render();
 });
-await caption(page, "5 回撃破で勝利", "VICTORY", "top");
+await cap("win");
 await sleep(1800);
 await clickEl(page, "[data-end]");
 await hideCursor(page);
+await waitFor(page, () => !!document.querySelector(".over-dlg"), 30000);
+await sleep(2600);
 await clearCaption(page);
-await waitFor(page, () => !!document.querySelector(".trophy-dlg"), 30000);
-await caption(page, "35 種類のトロフィーカード", "TROPHY CARDS", "bottom");
-let first = true;
-for (let n = 0; n < 10; n++) {
-  const open = await page.evaluate(() => !!document.querySelector(".trophy-dlg"));
-  if (!open) break;
-  if (!first) await page.evaluate(() => document.querySelector(".trophy-dlg")?.click()); // 2 枚目からはルーレットを飛ばす
-  await waitFor(page, () => !document.querySelector(".trophy-dlg [data-go][disabled]"), 15000);
-  await sleep(first ? 1600 : 700);
-  first = false;
-  await clickEl(page, ".trophy-dlg [data-go]", { moveMs: 300 });
-  await sleep(500);
-}
-await clearCaption(page);
-await waitFor(page, () => !!document.querySelector(".over-dlg"));
-await sleep(2200);
 
-// G. コレクション
+// 11. コレクション
 await clickEl(page, ".over-dlg [data-title]");
 await waitFor(page, () => !!document.querySelector("[data-go=collection]") && !document.querySelector(".fx-curtain"));
-await sleep(1200);
+await sleep(900);
 await clickEl(page, "[data-go=collection]");
 await waitFor(page, () => !!document.querySelector(".trophy-item") && !document.querySelector(".fx-curtain"));
-await caption(page, "集めたトロフィーは<br>コレクションで眺められる", "COLLECTION", "bottom");
+await cap("collection", "bottom");
 await sleep(900);
-await clickEl(page, ".trophy-item.own");
-await sleep(2400);
-await clearCaption(page);
-await clickEl(page, "[data-back-title]");
+await clickEl(page, '.trophy-item[data-t="wins-20"]');
+await sleep(2000);
+for (const b of ["royal", "matrix", "flame"]) {
+  await clickEl(page, `.back-item[data-back="${b}"]`, { moveMs: 450 });
+  await sleep(900);
+}
+await sleep(2200);
 await hideCursor(page);
-
-// H. 締め（タイトル）
-await waitFor(page, () => !!document.querySelector(".logo-art") && !document.querySelector(".fx-curtain"));
-await page.addStyleTag({ content: ".title .menu, .title .footer, .sound-toggle { opacity: 0; transition: opacity .6s; }" });
-await sleep(4200);
 await stopRec();
 await browser.close();
 
