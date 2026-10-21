@@ -75,7 +75,7 @@
   "Y": { "attr": "Diagonal", "hp": 60, "atk": 10, "skill": { "name": "Yank", "cost": 3,
     "lower": { "short": "YANK 1", "text": "相手のハンドからランダムに1枚を、トラッシュさせる", "ops": [{ "op": "yank", "count": 1 }] },
     "upper": { "short": "YANK 2", "text": "相手のハンドからランダムに2枚を、トラッシュさせる", "ops": [{ "op": "yank", "count": 2 }] } } },
-  "Z": { "attr": "Diagonal", "hp": 60, "atk": 12, "skill": { "name": "Zap", "cost": 6,
-    "lower": { "short": "25 DMG", "text": "相手のメインに25ダメージ", "ops": [{ "op": "damage", "amount": 25 }] },
-    "upper": { "short": "50 DMG", "text": "相手のメインに50ダメージ", "ops": [{ "op": "damage", "amount": 50 }] } } }
+  "Z": { "attr": "Diagonal", "hp": 60, "atk": 8, "skill": { "name": "Zap", "cost": 8,
+    "lower": { "short": "20 DMG", "text": "相手のメインに20ダメージ", "ops": [{ "op": "damage", "amount": 20 }] },
+    "upper": { "short": "40 DMG", "text": "相手のメインに40ダメージ", "ops": [{ "op": "damage", "amount": 40 }] } } }
 }

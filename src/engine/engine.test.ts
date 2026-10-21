@@ -6,6 +6,7 @@ import { addEffect, dealDamage, type Ctx } from "./core.ts";
 import { autoDamage, isValidPayment, locate, unitCard } from "./query.ts";
 import type { Action, Card, DeckList, GameState, PlayerId } from "./types.ts";
 import { playGame } from "../sim/play.ts";
+import { UNITS } from "./data.ts";
 
 const DECK: DeckList = {
   units: ["A", "Z", "S", "H", "C", "M", "F"],
@@ -83,7 +84,8 @@ test("お釣りなし（change: false）: [9] でコスト3を払うと 9 がト
   assert.ok(s.players[0].trash.includes(nine));
   assert.equal(unitCard(s, s.players[1].main)!.unit.hp, hp - 10);
 
-  // 0 はコスト 6 でも 1 枚で払える
+  // 0 はコスト 6 以上（Zap）でも 1 枚で払える
+  assert.ok(UNITS.Z.skill.cost >= 6);
   let t = setupGame();
   clearHands(t);
   const zero = num(t, 0, 0);
@@ -91,7 +93,7 @@ test("お釣りなし（change: false）: [9] でコスト3を払うと 9 がト
   const z = unit(t, 0, "Z");
   move(t, z, "sub");
   t = act(t, { type: "useSkill", player: 0, unit: z, payment: [zero] });
-  assert.equal(unitCard(t, t.players[1].main)!.unit.hp, 60 - 25);
+  assert.equal(unitCard(t, t.players[1].main)!.unit.hp, 60 - (UNITS.Z.skill.lower.ops[0].amount as number));
   assert.ok(t.players[0].trash.includes(zero));
 });
 
@@ -112,25 +114,26 @@ test("お釣りあり: [9] でコスト3を払うと 9 は残り6でストレー
 });
 
 test("お釣りあり: 余りはいちばん大きいカードに残り、ほかはトラッシュ。ちょうど使い切ればトラッシュ", () => {
-  let s = setupGame({ subs0: ["Z"] });
+  assert.equal(UNITS.M.skill.cost, 4);
+  let s = setupGame({ subs0: ["M"] });
   clearHands(s);
-  const four = num(s, 0, 4);
   const three = num(s, 0, 3);
-  for (const id of [four, three]) move(s, id, "storage");
-  // Zap（コスト 6）を [4, 3] で → 3 はトラッシュ、4 は残り 1
-  s = act(s, { type: "useSkill", player: 0, unit: unit(s, 0, "Z"), payment: [three, four] });
-  assert.deepEqual(s.players[0].storage, [four]);
-  assert.ok(s.players[0].trash.includes(three));
-  assert.equal((s.cards[four] as { spent?: number }).spent, 3);
+  const two = num(s, 0, 2);
+  for (const id of [three, two]) move(s, id, "storage");
+  // Muscle（コスト 4）を [3, 2] で → 2 はトラッシュ、3 は残り 1
+  s = act(s, { type: "useSkill", player: 0, unit: unit(s, 0, "M"), payment: [two, three] });
+  assert.deepEqual(s.players[0].storage, [three]);
+  assert.ok(s.players[0].trash.includes(two));
+  assert.equal((s.cards[three] as { spent?: number }).spent, 2);
 
-  let t = setupGame({ subs0: ["Z"] });
+  let t = setupGame({ subs0: ["M"] });
   clearHands(t);
-  const f2 = num(t, 0, 4);
-  const two = num(t, 0, 2);
-  for (const id of [f2, two]) move(t, id, "storage");
-  t = act(t, { type: "useSkill", player: 0, unit: unit(t, 0, "Z"), payment: [f2, two] });
+  const t3 = num(t, 0, 3);
+  const one = num(t, 0, 1);
+  for (const id of [t3, one]) move(t, id, "storage");
+  t = act(t, { type: "useSkill", player: 0, unit: unit(t, 0, "M"), payment: [t3, one] });
   assert.deepEqual(t.players[0].storage, []);
-  assert.equal((t.cards[f2] as { spent?: number }).spent, undefined); // トラッシュで元に戻る
+  assert.equal((t.cards[t3] as { spent?: number }).spent, undefined); // トラッシュで元に戻る
 });
 
 test("支払い: 余分な札を含む支払いは拒否", () => {
