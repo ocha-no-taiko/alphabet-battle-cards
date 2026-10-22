@@ -1,0 +1,47 @@
+# main に push するたびに、テストしてビルドし、GitHub Pages に公開する
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # 日本語フォント（廻想体）は再配布できないのでリポジトリに入れていない。作者が配布している Web フォントをここで取ってくる。
+      # 取れなかったときは UDEV Gothic（同梱）で表示される
+      - name: Fetch Kaisotai web font
+        run: node scripts/fetch-kaiso.mjs || echo "Kaisotai was not fetched; UDEV Gothic will be used"
+      - run: npm test
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

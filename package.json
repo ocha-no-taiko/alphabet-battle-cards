@@ -1,5 +1,5 @@
 {
-  "name": "abc-card-game",
+  "name": "alphabet-battle-cards",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -24,5 +24,6 @@
     "@types/three": "0.186.0",
     "typescript": "6.0.3",
     "vite": "7.3.7"
-  }
+  },
+  "description": "Alphabet Battle Cards (ABC) - アルファベットで戦う2人用カードゲーム"
 }
