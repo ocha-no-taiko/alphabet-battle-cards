@@ -18,7 +18,7 @@ import { logLine } from "./log.ts";
 import { detailHtml, lethalTarget, renderBoard } from "./view.ts";
 import { rulesOverlay } from "../screens/rules.ts";
 import { prefs, savePrefs } from "../prefs.ts";
-import { pinchKOs, playBgm, playSe, setSound, soundOn } from "../audio.ts";
+import { phaseFor, playBgm, playSe, setBgmPhase, setSound, soundOn } from "../audio.ts";
 import { cover, uncover } from "../fx.ts";
 import { revealTrophies } from "../screens/collection.ts";
 import { finishCpuGame, finishHotseatGame, finishTutorial, newRecord, track, type GameRecord } from "../trophies.ts";
@@ -80,6 +80,7 @@ export class Session {
     }
     setLayer("front");
     setSpeed(prefs.speed);
+    setBgmPhase(0);
     playBgm(tut ? "tutorial" : "battle");
   }
 
@@ -332,7 +333,8 @@ export class Session {
     for (const ev of r.events) delete ev.snap;
     if (this.opts.mode !== "hotseat") track(this.record, prev, a, r.events, 0, r.state);
     this.s = r.state;
-    if (this.s.phase === "main" && this.s.players.some((p) => p.kos >= pinchKOs())) playBgm("pinch");
+    // バトル BGM のフェーズは撃破数で決まる（audio.json の phase）
+    if (this.s.phase !== "over") setBgmPhase(phaseFor([this.s.players[0].kos, this.s.players[1].kos], this.viewer));
     this.busy = false;
     this.tutorial?.onAction(a, r.events, r.state, byHuman);
     this.render(this.s);

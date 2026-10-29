@@ -1,19 +1,21 @@
 {
-  "_comment": "BGM と効果音。値は audio/bgm・audio/se に置くファイル名（拡張子なし。mp3 / ogg / wav / m4a のどれでもよい）。ファイルが無いものは鳴らさない。",
+  "_comment": "BGM と効果音。値は audio/bgm・audio/se からのファイル名（拡張子なし。mp3 / ogg / wav / m4a のどれでもよい。サブフォルダは / で書く）。ファイルが無いものは鳴らさない。",
   "volume": { "bgm": 0.45, "se": 0.8 },
   "fadeMs": 700,
+  "_bgm": "文字列はループ再生。{ file, loop: false } は 1 回だけ。{ layers: [...] } はフェーズ BGM（全部を同時に流し、音量だけ切り替える）",
   "bgm": {
     "title": "title",
     "deck": "deck",
     "collection": "collection",
-    "tutorial": "tutorial",
-    "battle": "battle",
-    "pinch": "pinch",
-    "result-win": "result-win",
-    "result-lose": "result-lose"
+    "tutorial": "ABC_tutorial",
+    "battle": { "layers": ["phase/ABC_phase1", "phase/ABC_phase2", "phase/ABC_phase3", "phase/ABC_phase4", "phase/ABC_phase5"] },
+    "result-win": { "file": "ABC_win", "loop": false },
+    "result-lose": { "file": "ABC_lose", "loop": false }
   },
-  "_pinch": "どちらかの撃破数がこの数に達したら battle から pinch に切り替える",
-  "pinchKOs": 4,
+  "_phase": "バトル BGM のフェーズ。by: max = どちらか多いほうの撃破数 / total = 2 人の撃破数の合計 / mine = 自分の撃破数。撃破数 0 で 1 本目、1 で 2 本目…（最後の 1 本で止まる）。fadeMs は切り替えのクロスフェードの長さ",
+  "phase": { "by": "max", "fadeMs": 1500 },
+  "_loopStart": "ループの始まり。auto = 曲の頭の無音（MP3 の書き出しで入る 30ms ほどの空白）を飛ばす。数字ならその秒数から",
+  "loopStart": "auto",
   "se": {
     "click": "click",
     "hover": "hover",
