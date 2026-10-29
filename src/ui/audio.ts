@@ -14,9 +14,12 @@ for (const [path, url] of Object.entries(found)) {
 
 const A = audioJson;
 type BgmDef = string | { file?: string; loop?: boolean; layers?: string[] };
+type SeDef = string | { file: string; repeat?: number; every?: "trim" | number };
 
 interface Playing {
   scene: string;
+  /** 鳴らしているファイルの組み合わせ。場面が変わっても同じなら流し続ける */
+  key: string;
   out: GainNode;
   layers: GainNode[];
   sources: AudioBufferSourceNode[];
@@ -32,6 +35,7 @@ let phase = 0;
 let unlocked = false;
 let seq = 0;
 const buffers = new Map<string, Promise<AudioBuffer | null>>();
+const recentSe: string[] = []; // 確認用
 
 function url(kind: "bgm" | "se", name: string): string | null {
   return FILES.get(`${kind}/${name}`) ?? null;
@@ -82,6 +86,24 @@ function leadingSilence(list: AudioBuffer[]): number {
   return min === Infinity ? 0 : min;
 }
 
+/** 曲の後ろの無音を除いた長さ（秒）。続けて鳴らすときの間隔に使う */
+const soundEnds = new WeakMap<AudioBuffer, number>();
+function soundEnd(b: AudioBuffer): number {
+  let end = soundEnds.get(b);
+  if (end === undefined) {
+    let last = 0;
+    for (let c = 0; c < b.numberOfChannels; c++) {
+      const ch = b.getChannelData(c);
+      let i = ch.length - 1;
+      while (i > last && Math.abs(ch[i]) < 0.003) i--; // -50dB より小さいものは無音とみなす
+      last = Math.max(last, i);
+    }
+    end = Math.max(0.05, (last + 1) / b.sampleRate);
+    soundEnds.set(b, end);
+  }
+  return end;
+}
+
 function ramp(g: AudioParam, to: number, ms: number): void {
   const c = ctx!;
   const now = c.currentTime;
@@ -122,12 +144,17 @@ export function playBgm(scene: string): void {
   if (!prefs.sound || !unlocked) return;
   if (current?.scene === scene) return;
   const def = (A.bgm as Record<string, BgmDef>)[scene];
+  const layered = typeof def === "object" && !!def.layers;
+  const names = !def ? [] : typeof def === "string" ? [def] : def.layers ?? (def.file ? [def.file] : []);
+  const loop = typeof def === "string" || (!!def && def.loop !== false);
+  const key = `${names.join("|")}:${loop}`;
+  if (names.length && current?.key === key) {
+    current.scene = scene; // タイトル → デック編集など、同じ曲の場面どうしは流し続ける
+    return;
+  }
   stopCurrent();
   const token = ++seq;
   if (!def) return;
-  const layered = typeof def === "object" && !!def.layers;
-  const names = typeof def === "string" ? [def] : def.layers ?? (def.file ? [def.file] : []);
-  const loop = typeof def === "string" || def.loop !== false;
   const urls = names.map((n) => url("bgm", n));
   if (!urls.length || urls.some((u) => !u)) return;
   void Promise.all(urls.map((u) => load(u!))).then((list) => {
@@ -157,7 +184,7 @@ export function playBgm(scene: string): void {
       layers.push(g);
       sources.push(src);
     });
-    current = { scene, out, layers, sources, layered };
+    current = { scene, key, out, layers, sources, layered };
   });
 }
 
@@ -180,18 +207,32 @@ export function setBgmPhase(n: number): void {
 /** 効果音（audio.json の se のキー） */
 export function playSe(key: string, volume = 1): void {
   if (!prefs.sound || !unlocked) return;
-  const name = (A.se as Record<string, string>)[key];
+  const def = (A.se as Record<string, SeDef>)[key];
+  const name = typeof def === "string" ? def : def?.file;
   const src = name ? url("se", name) : null;
   if (!src) return;
+  recentSe.push(key);
+  if (recentSe.length > 8) recentSe.shift();
+  const repeat = typeof def === "object" ? Math.max(1, def.repeat ?? 1) : 1;
+  const every = typeof def === "object" ? def.every ?? "trim" : "trim";
   void load(src).then((b) => {
     const c = ctx;
     if (!b || !c) return;
-    const s = c.createBufferSource();
-    s.buffer = b;
     const g = c.createGain();
     g.gain.value = Math.min(1, volume);
-    s.connect(g).connect(seBus);
-    s.start();
+    g.connect(seBus);
+    const gap = typeof every === "number" ? every : soundEnd(b);
+    const lead = repeat > 1 ? leadingSilence([b]) : 0;
+    const t0 = c.currentTime;
+    for (let i = 0; i < repeat; i++) {
+      const s = c.createBufferSource();
+      s.buffer = b;
+      s.connect(g);
+      // 前の音が終わる位置で次を鳴らす（後ろの無音は鳴らさず、2 回目以降は頭の無音も飛ばす）
+      const from = i ? lead : 0;
+      if (i < repeat - 1) s.start(t0 + i * gap, from, gap - from);
+      else s.start(t0 + i * gap, from);
+    }
   });
 }
 
@@ -207,8 +248,21 @@ export function initAudio(): void {
   window.addEventListener("pointerdown", unlock, { capture: true });
   window.addEventListener("keydown", unlock, { capture: true });
   document.addEventListener("click", (e) => {
-    if ((e.target as HTMLElement).closest(".btn:not(:disabled), .card.pick, .card.playable, .card.usable")) playSe("click");
+    const t = (e.target as HTMLElement).closest<HTMLElement>(".btn:not(:disabled), .card.pick, .card.playable, .card.usable");
+    if (t) playSe(buttonSe(t));
   });
+}
+
+/** 押したボタンに合う効果音（audio.json の buttons を上から順に見る） */
+function buttonSe(el: HTMLElement): string {
+  for (const b of A.buttons) {
+    try {
+      if (el.matches(b.match)) return b.se;
+    } catch {
+      // セレクタの書き間違いは飛ばす
+    }
+  }
+  return "click";
 }
 
 /** 見つかった音声ファイルの数（デバッグ用） */
@@ -217,8 +271,10 @@ export function audioFileCount(): number {
 }
 
 /** いまの再生状態（確認用） */
-export function audioDebug(): { scene: string | null; phase: number; gains: number[]; state: string; loopStart: number | null } {
+export function audioDebug(): { scene: string | null; file: string | null; phase: number; gains: number[]; state: string; loopStart: number | null; recentSe: string[] } {
   return {
+    file: current?.key ?? null,
+    recentSe: [...recentSe],
     scene: current?.scene ?? null,
     phase,
     gains: current?.layers.map((g) => +g.gain.value.toFixed(2)) ?? [],
