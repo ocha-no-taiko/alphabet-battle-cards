@@ -19,9 +19,11 @@
   "_se": "文字列はファイル名。{ file, repeat, every } は repeat 回続けて鳴らす（every: trim = 曲の後ろの無音を詰めて間を空けない / 数字ならその秒ごと）",
   "se": {
     "click": "click",
-    "back": "ABC_back",
+    "back": "ABC_select",
+    "select": "ABC_select",
     "yes": "ABC_yes",
-    "gamestart": "ABC_gamestart",
+    "gamestart": "ABC_turnchange",
+    "logo": "ABC_attack",
     "hover": "hover",
     "error": "error",
     "transition": "transition",
@@ -31,14 +33,14 @@
     "pay": "pay",
     "skill": "skill",
     "symbol": "symbol",
-    "attack": "attack",
+    "attack": "ABC_attack",
     "damage": "damage",
     "damage-big": "damage-big",
     "guard": "guard",
     "heal": "heal",
-    "ko": "ABC_break",
+    "ko": "ABC_ko",
     "evolve": "evolve",
-    "turn": "turn",
+    "turn": "ABC_turnchange",
     "coin": "coin",
     "first": "first",
     "trophy": "ABC_trophy",
@@ -53,7 +55,7 @@
   "buttons": [
     { "se": "gamestart", "match": "[data-start], [data-again], [data-go='tutorial']", "_note": "はじめる / もう一度 / チュートリアル" },
     { "se": "back", "match": "[data-back], [data-back-title], [data-cancel], [data-title], [data-quit]", "_note": "もどる / キャンセル / 閉じる / タイトルへ" },
-    { "se": "click", "match": "[data-end]", "_note": "ターン終了は毎ターン押すので、はい の音にしない" },
-    { "se": "yes", "match": ".btn.hot, .menu-item[data-go]", "_note": "OK / 使う / 発動 / 次へ / 保存 / タイトルのメニュー" }
+    { "se": "select", "match": ".setup-dlg .pool-item, .setup-dlg .card.pick, .choose-dlg .card.pick", "_note": "準備でメイン・サブを選ぶ / 撃破後に新しいメインを選ぶ" },
+    { "se": "yes", "match": ".btn.hot, .btn[data-end], .menu-item[data-go]", "_note": "OK / 使う / 発動 / 次へ / 保存 / ターン終了 / タイトルのメニュー" }
   ]
 }

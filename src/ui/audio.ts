@@ -248,9 +248,9 @@ export function initAudio(): void {
   window.addEventListener("pointerdown", unlock, { capture: true });
   window.addEventListener("keydown", unlock, { capture: true });
   document.addEventListener("click", (e) => {
-    const t = (e.target as HTMLElement).closest<HTMLElement>(".btn:not(:disabled), .card.pick, .card.playable, .card.usable");
+    const t = (e.target as HTMLElement).closest<HTMLElement>(".btn:not(:disabled), .card.pick, .card.playable, .card.usable, .pool-item");
     if (t) playSe(buttonSe(t));
-  });
+  }, { capture: true }); // 画面がクリックで描き直される前に、押した要素を見る
 }
 
 /** 押したボタンに合う効果音（audio.json の buttons を上から順に見る） */

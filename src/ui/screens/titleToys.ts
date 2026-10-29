@@ -34,7 +34,7 @@ export function attachTitleToys(root: HTMLElement): () => void {
 
   const glitchLogo = async () => {
     clicks++;
-    playSe("skill");
+    playSe("logo");
     const r = logo.getBoundingClientRect();
     const center = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     sparks(center, [COLORS[0][0], COLORS[1][0], COLORS[2][0], theme.fg], 26, 1.3);
